@@ -7,7 +7,7 @@
     body {
       margin: 0;
       overflow: hidden;
-      background-color: #87CEEB; /* 空の色 */
+      background-color: #87CEEB;
       font-family: sans-serif;
     }
     #info {
@@ -19,7 +19,6 @@
       border-radius: 8px;
       font-size: 18px;
     }
-    /* 操作する魔女キャラクター（テスト用の紫の丸） */
     #witch {
       position: absolute;
       width: 60px;
@@ -27,7 +26,6 @@
       background-color: #8e44ad;
       border-radius: 50%;
       box-shadow: 0 0 15px rgba(0,0,0,0.3);
-      transition: transform 0.05s ease-out;
     }
   </style>
 </head>
@@ -37,18 +35,16 @@
   <div id="info">スマホからのデータ受信待機中...</div>
   <div id="witch"></div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // ★ここをご自分の firebaseConfig に書き換えてください
     const firebaseConfig = {
      apiKey: "AIzaSyD1pVotHvYA_Abc0lwxxYMzlMkePwBx89A",
      authDomain: "bunnkasai-test-c9f1d.firebaseapp.com",
      databaseURL: "https://bunnkasai-test-c9f1d-default-rtdb.asia-southeast1.firebasedatabase.app",
      projectId: "bunnkasai-test-c9f1d",
-     storageBucket: "bunnkasai-test-c9f1d.firebasestorage.app",
+     storageBucket: "bunnkasai-test-c9f1d.appspot.com",
      messagingSenderId: "626413070465",
      appId: "1:626413070465:web:2cb19f7bb88d1fd2240580",
      measurementId: "G-JJNMNWL4M1"
@@ -64,25 +60,31 @@
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
+    let boostActive = false; // ブースト状態
 
-    // Firebase から数値をリアルタイム受信
+    // Firebase からデータを受信
     database.ref('player1/move').on('value', (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        inputX = data.x; // gamma (左右)
-        inputY = data.y; // beta (前後)
-        info.textContent = `受信中 - X: ${Math.round(inputX)}, Y: ${Math.round(inputY)}`;
+        inputX = data.x; 
+        inputY = data.y; 
+        boostActive = data.boost || false; // ブースト状態を受け取る
+        info.textContent = `受信中 [ブースト: ${boostActive ? 'ON' : 'OFF'}]`;
       }
     });
 
     // 画面の更新（ゲームループ）
     function update() {
-      const speedFactor = 0.1; // ← 例：0.4を「0.8」にすると2倍速く、「0.2」にすると半分に遅くなります
+      let targetX = (window.innerWidth / 2) + (inputX * 5);
+      let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      posX += inputX * speedFactor;
-      posY += (inputY - 30) * speedFactor; 
+      // ★ここがポイント：通常時は「0.04」でかなりゆっくり、ブースト時は「0.3」でキビキビ動かす
+      let smoothness = boostActive ? 0.3 : 0.04; 
 
-      // 画面外に出ていかないように制限
+      posX += (targetX - posX) * smoothness;
+      posY += (targetY - posY) * smoothness;
+
+      // 画面外制限
       posX = Math.max(0, Math.min(window.innerWidth - 60, posX));
       posY = Math.max(0, Math.min(window.innerHeight - 60, posY));
 
