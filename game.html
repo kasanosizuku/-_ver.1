@@ -176,7 +176,7 @@
 
       if (timeLeft <= 0) {
         isGameOver = true;
-        resultText.innerHTML = "CLEAR!! 🎊<br><span style='font-size:20px;'>おめでとう！30秒間生き残りました！</span>";
+        resultText.innerHTML = "<br><span style='font-size:20px;'>めいから逃げ切った！</span>";
         resultScreen.style.display = 'block';
       }
     }, 1000);
@@ -268,7 +268,7 @@
 
           if (b.scale > 0.85 && distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
-            resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>飛んできたバケツに直撃した…！</span>";
+            resultText.innerHTML = "<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>めいに捕まった。。。</span>";
             resultScreen.style.display = 'block';
           }
         }
