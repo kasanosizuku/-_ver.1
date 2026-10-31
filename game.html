@@ -209,6 +209,9 @@
       if (Math.abs(rawX) < deadzone) rawX = 0;
       if (Math.abs(rawY) < deadzone) rawY = 0;
 
+      let moveX = rawX;
+      let moveY = rawY;
+
       // 5. ブースト中のスピード適用
       let currentSpeed = boostActive ? (baseSpeed * boostMultiplier) : baseSpeed;
 
