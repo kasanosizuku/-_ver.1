@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>魔女のコントローラー</title>
+  <title>君のまっくろくろすけ</title>
   <style>
     body {
       font-family: sans-serif;
@@ -31,7 +31,7 @@
 </head>
 <body>
 
-  <h1>🧹 コントローラー</h1>
+  <h1>君のまっくろくろすけ</h1>
   <p>ボタンを押してからスマホを傾けてね！</p>
   <button id="start-btn">ゲームスタート！</button>
   <div id="status">未接続</div>
@@ -85,10 +85,10 @@
       const gamma = event.gamma || 0; // 左右傾き (-90 ～ 90)
       const beta = event.beta || 0;   // 前後傾き (-180 ～ 180)
 
-      // Firebase にリアルタイム更新
+      // 傾き具合によるスピード調整
       database.ref('player1/move').set({
-        x: gamma,
-        y: beta
+        x: gamma * 0.3,
+        y: beta * 0.3
       });
     }
 
