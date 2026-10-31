@@ -2,67 +2,45 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>君のまっくろくろすけ（コントローラー）</title>
+  <title>君のまっくろくろすけ - ゲーム画面</title>
   <style>
     body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #87CEEB; /* 空の背景色 */
       font-family: sans-serif;
-      text-align: center;
-      padding-top: 30px;
-      background-color: #222;
-      color: #fff;
     }
-    button {
-      font-size: 20px;
-      padding: 12px 24px;
-      border-radius: 10px;
-      border: none;
-      background-color: #ff4081;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 10px;
-    }
-    /* ブーストボタン（通常・アクティブ・クールダウン中） */
-    #boost-btn {
-      background-color: #ff9800;
-      font-size: 24px;
-      padding: 20px 40px;
-      transition: background-color 0.2s;
-    }
-    #boost-btn.active {
-      background-color: #e65100;
-      transform: scale(0.95);
-    }
-    #boost-btn:disabled {
-      background-color: #555;
-      color: #888;
-      cursor: not-allowed;
-      transform: none;
-    }
-    #status {
-      margin-top: 15px;
-      font-size: 16px;
-      color: #00e676;
-    }
-    #cooldown-info {
-      margin-top: 10px;
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
       font-size: 18px;
       font-weight: bold;
-      color: #ffeb3b;
+      color: #333;
+    }
+    /* まっくろくろすけキャラクター（歩行アニメーション対応） */
+    #player {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      /* ここにご用意いただいた画像のファイル名を設定してください */
+      background-image: url('makkuro.png'); 
+      /* 横長の連続画像を想定し、アニメーションさせる設定 */
+      background-size: 400px 80px; /* 例: 5コマ分の横長画像の場合 */
+      background-position: 0 0;
     }
   </style>
 </head>
+
 <body>
 
-  <h1>君のまっくろくろすけ</h1>
-  <button id="start-btn">ゲームスタート！</button>
-  <br>
-  <!-- ブーストボタン ＆ クールタイム表示 -->
-  <button id="boost-btn">わっ！</button>
-  <div id="cooldown-info"></div>
-  <div id="status">未接続</div>
+  <div id="info">スマホからのデータ受信待機中...</div>
+  <div id="player"></div>
 
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -81,104 +59,72 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    const startBtn = document.getElementById('start-btn');
-    const boostBtn = document.getElementById('boost-btn');
-    const statusDiv = document.getElementById('status');
-    const cooldownInfo = document.getElementById('cooldown-info');
+    const player = document.getElementById('player');
+    const info = document.getElementById('info');
 
-    let currentGamma = 0;
-    let currentBeta = 0;
-    let isBoosting = false;
+    let posX = window.innerWidth / 2;
+    let posY = window.innerHeight / 2;
+    let inputX = 0;
+    let inputY = 0;
+    let boostActive = false;
 
-    // クールタイム・ブースト管理用タイマー変数
-    let boostTimer = null;
-    let cooldownTimer = null;
-    let remainingCooldown = 0;
+    // 歩行アニメーション用の変数
+    let animTimer = 0;
+    let frameIndex = 0;
+    const totalFrames = 4; // 画像に含まれる歩行フレーム数に合わせて変更してください
 
-    async function startSensor() {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          const permissionState = await DeviceOrientationEvent.requestPermission();
-          if (permissionState === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation);
-            statusDiv.textContent = "送信中...";
-          } else {
-            alert("センサーの使用が拒否されました");
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation);
-        statusDiv.textContent = "送信中...";
+    // Firebase からデータを受信
+    database.ref('player1/move').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        inputX = data.x; 
+        inputY = data.y; 
+        boostActive = data.boost || false;
+        info.textContent = `まっくろくろすけ出撃中 [ブースト: ${boostActive ? 'ON 🔥' : 'OFF'}]`;
       }
-    }
-
-    function handleOrientation(event) {
-      currentGamma = event.gamma || 0;
-      currentBeta = event.beta || 0;
-      sendData();
-    }
-
-    function sendData() {
-      database.ref('player1/move').set({
-        x: currentGamma,
-        y: currentBeta,
-        boost: isBoosting
-      });
-    }
-
-    startBtn.addEventListener('click', startSensor);
-
-    // ブーストボタンが押されたときの処理
-    boostBtn.addEventListener('click', () => {
-      // すでにブースト中、またはクールダウン中なら無視
-      if (isBoosting || remainingCooldown > 0) return;
-
-      // --- ① ブースト発動（5秒間） ---
-      isBoosting = true;
-      boostBtn.classList.add('active');
-      boostBtn.textContent = "ブースト中！ (5s)";
-      sendData();
-
-      let boostLeft = 5;
-      boostTimer = setInterval(() => {
-        boostLeft--;
-        if (boostLeft > 0) {
-          boostBtn.textContent = `ブースト中！ (${boostLeft}s)`;
-        } else {
-          clearInterval(boostTimer);
-          // --- ② ブースト終了 → クールタイム開始（15秒） ---
-          isBoosting = false;
-          boostBtn.classList.remove('active');
-          sendData();
-
-          startCooldown(15);
-        }
-      }, 1000);
     });
 
-    // クールタイムを管理・表示する関数
-    function startCooldown(seconds) {
-      remainingCooldown = seconds;
-      boostBtn.disabled = true;
-      boostBtn.textContent = `クールタイム中`;
-      cooldownInfo.textContent = `残りクールタイム: ${remainingCooldown}秒`;
+    // 画面の更新（ゲームループ）
+    function update() {
+      // 目標座標の計算
+      let targetX = (window.innerWidth / 2) + (inputX * 5);
+      let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      cooldownTimer = setInterval(() => {
-        remainingCooldown--;
-        if (remainingCooldown > 0) {
-          cooldownInfo.textContent = `残りクールタイム: ${remainingCooldown}秒`;
-        } else {
-          clearInterval(cooldownTimer);
-          remainingCooldown = 0;
-          boostBtn.disabled = false;
-          boostBtn.textContent = "ブースト！";
-          cooldownInfo.textContent = "ブースト準備完了！";
-          setTimeout(() => { cooldownInfo.textContent = ""; }, 2000);
+      // 通常時は「0.02」でかなりゆっくりフワフワ、ブースト時は「0.3」でキビキビ高速移動！
+      let smoothness = boostActive ? 0.3 : 0.02; 
+
+      let prevX = posX;
+      let prevY = posY;
+
+      posX += (targetX - posX) * smoothness;
+      posY += (targetY - posY) * smoothness;
+
+      // 画面外制限
+      posX = Math.max(0, Math.min(window.innerWidth - 80, posX));
+      posY = Math.max(0, Math.min(window.innerHeight - 80, posY));
+
+      player.style.left = posX + 'px';
+      player.style.top = posY + 'px';
+
+      // --- 歩行アニメーションの制御 ---
+      // キャラクターが動いている（前回の位置から少しずれている）ときだけ足が動く
+      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
+      if (movedDistance > 0.1) {
+        animTimer++;
+        // スピード（ブースト中など）に合わせてアニメーションの切り替わりを早くする
+        let interval = boostActive ? 4 : 12; 
+
+        if (animTimer > interval) {
+          frameIndex = (frameIndex + 1) % totalFrames;
+          player.style.backgroundPosition = `-${frameIndex * 80}px 0px`;
+          animTimer = 0;
         }
-      }, 1000);
+      }
+
+      requestAnimationFrame(update);
     }
+
+    update();
   </script>
 </body>
 </html>
