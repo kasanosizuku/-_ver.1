@@ -46,6 +46,7 @@
     .bucket {
       position: absolute;
       object-fit: contain;
+      transform: translate(-50%, -50%); /* 中心基準に統一 */
       display: none;
       z-index: 4;
     }
@@ -53,6 +54,7 @@
     .bucket-afterimage {
       position: absolute;
       object-fit: contain;
+      transform: translate(-50%, -50%); /* 中心基準に統一 */
       z-index: 3;
       pointer-events: none;
       opacity: 0.4;
@@ -143,8 +145,8 @@
       buckets.push({
         warningElement: warningEl,
         element: img,
-        x: Math.random() * window.innerWidth,
-        y: Math.random() * window.innerHeight,
+        x: Math.random() * (window.innerWidth - 200) + 100,
+        y: Math.random() * (window.innerHeight - 200) + 100,
         state: 'warning',
         timer: 0,
         scale: 0.1,
@@ -221,13 +223,12 @@
           b.scale += b.speed; // 手前に近づくにつれて大きくなる
 
           let currentSize = 180 * b.scale;
-          let currentLeft = b.x - currentSize / 2;
-          let currentTop = b.y - currentSize / 2;
 
+          // CSSの transform: translate(-50%, -50%) を使うことで中心座標をそのまま指定できる
           b.element.style.width = currentSize + 'px';
           b.element.style.height = currentSize + 'px';
-          b.element.style.left = currentLeft + 'px';
-          b.element.style.top = currentTop + 'px';
+          b.element.style.left = b.x + 'px';
+          b.element.style.top = b.y + 'px';
 
           // --- バケツの残像生成処理 ---
           b.afterimageCounter++;
@@ -237,8 +238,8 @@
             afterimage.className = 'bucket-afterimage';
             afterimage.style.width = currentSize + 'px';
             afterimage.style.height = currentSize + 'px';
-            afterimage.style.left = currentLeft + 'px';
-            afterimage.style.top = currentTop + 'px';
+            afterimage.style.left = b.x + 'px';
+            afterimage.style.top = b.y + 'px';
             document.body.appendChild(afterimage);
 
             // フェードアウトして削除
@@ -258,7 +259,7 @@
             b.speed = 0.005 + Math.random() * 0.006;
           }
 
-          // 当たり判定
+          // 当たり判定（お互いの中心同士の距離で判定）
           let hitMargin = 40;
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
