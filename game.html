@@ -79,7 +79,7 @@
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
       // ★ここがポイント：通常時は「0.04」でかなりゆっくり、ブースト時は「0.3」でキビキビ動かす
-      let smoothness = boostActive ? 0.3 : 0.04; 
+      let smoothness = boostActive ? 0.3 : 0.01; 
 
       posX += (targetX - posX) * smoothness;
       posY += (targetY - posY) * smoothness;
