@@ -229,6 +229,7 @@
           b.element.style.left = b.x + 'px';
           b.element.style.top = b.y + 'px';
 
+          b.element.style.opacity = b.scale;
           // --- バケツの残像生成処理 ---
           b.afterimageCounter++;
           if (b.afterimageCounter % 4 === 0 && b.scale > 0.2) {
