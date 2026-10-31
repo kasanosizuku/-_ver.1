@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -108,7 +108,7 @@
     let boostActive = false;
     let isGameOver = false;
 
-    let timeLeft = 120;
+    let timeLeft = 30; // 制限時間を30秒に変更
     let timerCounter = 0;
 
     let animTimer = 0;
@@ -141,7 +141,7 @@
         state: 'warning', // 'warning'（警告中） または 'falling'（手前に飛来中）
         timer: 0,         // 状態変化用タイマー
         scale: 0.1,       // 奥から手前に来るにつれて大きくなる倍率
-        speed: 0.5      // 飛んでくるスピード
+        speed: 0.5        // 飛んでくるスピード
       });
     }
 
@@ -166,7 +166,7 @@
 
       if (timeLeft <= 0) {
         isGameOver = true;
-        resultText.innerHTML = "CLEAR!! 🎊<br><span style='font-size:20px;'>おめでとう！2分間生き残りました！</span>";
+        resultText.innerHTML = "CLEAR!! 🎊<br><span style='font-size:20px;'>おめでとう！30秒間生き残りました！</span>";
         resultScreen.style.display = 'block';
       }
     }, 1000);
@@ -225,62 +225,4 @@
 
           // 手前に到達しきったら（scale >= 1.0）、新しい位置に再セットして再び警告からループ
           if (b.scale >= 1.0) {
-            b.state = 'warning';
-            b.x = Math.random() * (window.innerWidth - 200) + 100;
-            b.y = Math.random() * (window.innerHeight - 200) + 100;
-            b.speed = 0.015 + Math.random() * 0.02; // スピードランダム
-          }
-
-          // --- 当たり判定（手前に飛び出してきてキャラクターと重なった瞬間） ---
-          let hitMargin = 40;
-          let playerCenterX = posX + 80;
-          let playerCenterY = posY + 80;
-          let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
-
-          // バケツが手前に迫っていて（scaleが大きくなっていて）、距離が近いとき
-          if (b.scale > 0.6 && distance < (currentSize / 2 + hitMargin)) {
-            isGameOver = true;
-            resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>飛んできたバケツに直撃した…！</span>";
-            resultScreen.style.display = 'block';
-          }
-        }
-      }
-
-      let minutes = Math.floor(timeLeft / 60);
-      let seconds = timeLeft % 60;
-      let formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
-      info.textContent = `残り時間: ${minutes}:${formattedSeconds} | バケツ数: ${activeBucketCount} | ブースト: ${boostActive ? '🔥 ON' : 'OFF'}`;
-
-      // --- 左右の向きと歩行アニメーション制御 ---
-      let moveDelta = posX - prevX;
-      if (Math.abs(moveDelta) > 0.001) {
-        if (moveDelta > 0) currentDirection = 'right';
-        else if (moveDelta < 0) currentDirection = 'left';
-      }
-
-      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
-      if (movedDistance > 0.05) {
-        animTimer++;
-        let interval = boostActive ? 3 : 10; 
-
-        if (animTimer > interval) {
-          if (currentDirection === 'right') {
-            rightFrameIndex = (rightFrameIndex + 1) % 4;
-            player.src = `walk${rightFrameIndex + 1}.jpg`;
-          } else {
-            leftFrameIndex = (leftFrameIndex + 1) % 4;
-            player.src = `walk${5 + leftFrameIndex}.jpg`;
-          }
-          animTimer = 0;
-        }
-      } else {
-        player.src = (currentDirection === 'right') ? 'walk1.jpg' : 'walk5.jpg';
-      }
-
-      requestAnimationFrame(update);
-    }
-
-    update();
-  </script>
-</body>
-</html>
+            b.
