@@ -150,7 +150,7 @@
         state: 'warning',
         timer: 0,
         scale: 0.1,
-        speed: 0.008,
+        speed: 0.004, // 【変更】バケツのスピードをさらにゆっくりに変更
         afterimageCounter: 0
       });
     }
@@ -254,19 +254,19 @@
             b.state = 'warning';
             b.x = Math.random() * (window.innerWidth - 200) + 100;
             b.y = Math.random() * (window.innerHeight - 200) + 100;
-            b.speed = 0.005 + Math.random() * 0.006;
+            b.speed = 0.003 + Math.random() * 0.004;
           }
 
-          // --- 当たり判定の修正（バケツの手前側かつ、距離が十分に縮まったときのみ） ---
+          // --- 当たり判定（さらに厳密に調整） ---
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
-          // 【変更】バケツが十分に手前に来ていて（scale > 0.75）、かつ中心同士の距離がかなり近いときだけに調整
-          let bucketRadius = (currentSize / 2) * 0.6; // 画像の余分な余白を考慮して当たり判定を少し小さくする
-          let playerRadius = 50; // まっくろくろすけの当たりの大きさ
+          // 【変更】手前ギリギリ（scale > 0.85）かつ、判定サイズを画像よりも一回り小さく（0.45倍）設定
+          let bucketRadius = (currentSize / 2) * 0.45; 
+          let playerRadius = 45; // くろすけ側の当たり判定
 
-          if (b.scale > 0.75 && distance < (bucketRadius + playerRadius)) {
+          if (b.scale > 0.85 && distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
             resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>飛んできたバケツに直撃した…！</span>";
             resultScreen.style.display = 'block';
