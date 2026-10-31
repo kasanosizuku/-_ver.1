@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -232,23 +232,29 @@
           }
 
         } else if (b.state === 'falling') {
-          // 2. バケツ出現フェーズ
+          // 2. バケツ出現・滞留フェーズ
           b.timer++;
 
-          let finalSize = 500; // バケツの表示サイズ
+          let finalSize = 250; // バケツの表示サイズ
           b.element.style.width = finalSize + 'px';
           b.element.style.height = finalSize + 'px';
           b.element.style.left = b.x + 'px';
           b.element.style.top = b.y + 'px';
-          b.element.style.opacity = 1.0;
 
-          // 当たり判定
+          // ★消える直前に少しだけフェードアウト（徐々に薄くなる）効果を演出
+          if (b.timer > 45) {
+            b.element.style.opacity = (60 - b.timer) / 15; // 45〜60フレームの間でじわっと消える
+          } else {
+            b.element.style.opacity = 1.0;
+          }
+
+          // 当たり判定（表示されている間中ずっと有効）
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
           let bucketRadius = finalSize / 2;
-          let playerRadius = 40; // 当たり判定の広さ調整
+          let playerRadius = 40; 
 
           if (distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
@@ -256,8 +262,8 @@
             resultScreen.style.display = 'block';
           }
 
-          // 約0.25秒後にリセットして次の位置へ
-          if (b.timer > 15) {
+          // ★表示時間を「60フレーム（約1秒間）」に延ばして残るように修正
+          if (b.timer > 60) {
             b.state = 'warning';
             b.timer = 0;
             b.x = Math.random() * (window.innerWidth - 200) + 100;
