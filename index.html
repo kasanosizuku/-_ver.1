@@ -87,10 +87,15 @@
       if (now - lastSendTime < 50) return;
       lastSendTime = now;
 
-      // 【テスト用】感度を極端に小さくしてみる（例: 0.2倍）
+      const speedMultiplier = 0.03; // ← この数値を変えてみてください！
+      
+      const adjustedX = gamma * speedMultiplier;
+      const adjustedY = beta * speedMultiplier;
+
+      // 補正をかけたスピードそのものをFirebaseに送る
       database.ref('player1/move').set({
-        x: gamma * 0.000002, 
-        y: beta * 0.000002
+        x: adjustedX,
+        y: adjustedY
       });
     }
 
