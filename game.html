@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -21,16 +21,12 @@
       font-weight: bold;
       color: #333;
     }
-    /* まっくろくろすけキャラクター（歩行アニメーション対応） */
+    /* まっくろくろすけキャラクター（画像タグとして配置） */
     #player {
       position: absolute;
-      width: 80px;
-      height: 80px;
-      /* ここにご用意いただいた画像のファイル名を設定してください */
-      background-image: url('makkuro.png'); 
-      /* 横長の連続画像を想定し、アニメーションさせる設定 */
-      background-size: 400px 80px; /* 例: 5コマ分の横長画像の場合 */
-      background-position: 0 0;
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
     }
   </style>
 </head>
@@ -38,7 +34,8 @@
 <body>
 
   <div id="info">スマホからのデータ受信待機中...</div>
-  <div id="player"></div>
+  <!-- 画像を切り替えて歩かせるためのimg要素 -->
+  <img id="player" src="walk1.jpg" alt="まっくろくろすけ">
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -68,10 +65,10 @@
     let inputY = 0;
     let boostActive = false;
 
-    // 歩行アニメーション用の変数
+    // 歩行アニメーション用の設定（全8枚の画像を順番に切り替え）
     let animTimer = 0;
     let frameIndex = 0;
-    const totalFrames = 4; // 画像に含まれる歩行フレーム数に合わせて変更してください
+    const totalFrames = 8; 
 
     // Firebase からデータを受信
     database.ref('player1/move').on('value', (snapshot) => {
@@ -90,7 +87,7 @@
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      // 通常時は「0.02」でかなりゆっくりフワフワ、ブースト時は「0.3」でキビキビ高速移動！
+      // 通常時は「0.02」でかなりゆっくり、ブースト時は「0.3」で高速移動
       let smoothness = boostActive ? 0.3 : 0.02; 
 
       let prevX = posX;
@@ -100,25 +97,29 @@
       posY += (targetY - posY) * smoothness;
 
       // 画面外制限
-      posX = Math.max(0, Math.min(window.innerWidth - 80, posX));
-      posY = Math.max(0, Math.min(window.innerHeight - 80, posY));
+      posX = Math.max(0, Math.min(window.innerWidth - 100, posX));
+      posY = Math.max(0, Math.min(window.innerHeight - 100, posY));
 
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
 
       // --- 歩行アニメーションの制御 ---
-      // キャラクターが動いている（前回の位置から少しずれている）ときだけ足が動く
       let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
-      if (movedDistance > 0.1) {
+      
+      if (movedDistance > 0.05) {
+        // 動いているときはコマ送りのスピードを調整（通常時はゆっくり、ブースト時はキビキビ）
         animTimer++;
-        // スピード（ブースト中など）に合わせてアニメーションの切り替わりを早くする
-        let interval = boostActive ? 4 : 12; 
+        let interval = boostActive ? 3 : 10; 
 
         if (animTimer > interval) {
           frameIndex = (frameIndex + 1) % totalFrames;
-          player.style.backgroundPosition = `-${frameIndex * 80}px 0px`;
+          // walk1.jpg 〜 walk8.jpg を順番に切り替え
+          player.src = `walk${frameIndex + 1}.jpg`;
           animTimer = 0;
         }
+      } else {
+        // 止まっているときは最初の立ち姿（walk1.jpg）に戻す
+        player.src = 'walk1.jpg';
       }
 
       requestAnimationFrame(update);
