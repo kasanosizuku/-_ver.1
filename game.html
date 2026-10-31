@@ -21,7 +21,6 @@
       font-weight: bold;
       color: #333;
     }
-    /* まっくろくろすけキャラクター（画像タグとして配置） */
     #player {
       position: absolute;
       width: 100px;
@@ -34,7 +33,6 @@
 <body>
 
   <div id="info">スマホからのデータ受信待機中...</div>
-  <!-- 画像を切り替えて歩かせるためのimg要素 -->
   <img id="player" src="walk1.jpg" alt="まっくろくろすけ">
 
   <!-- Firebase SDK -->
@@ -65,10 +63,11 @@
     let inputY = 0;
     let boostActive = false;
 
-    // 歩行アニメーション用の設定（全8枚の画像を順番に切り替え）
+    // アニメーション管理用
     let animTimer = 0;
-    let frameIndex = 0;
-    const totalFrames = 4; 
+    let rightFrameIndex = 0; // 右移動用 (0〜3 → walk1〜4)
+    let leftFrameIndex = 0;  // 左移動用 (0〜3 → walk5〜8)
+    let currentDirection = 'right'; // 向きを記憶する変数
 
     // Firebase からデータを受信
     database.ref('player1/move').on('value', (snapshot) => {
@@ -83,11 +82,9 @@
 
     // 画面の更新（ゲームループ）
     function update() {
-      // 目標座標の計算
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      // 通常時は「0.02」でかなりゆっくり、ブースト時は「0.3」で高速移動
       let smoothness = boostActive ? 0.3 : 0.02; 
 
       let prevX = posX;
@@ -103,23 +100,38 @@
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
 
+      // --- 向きの判定（左右どちらに進んでいるか） ---
+      let moveDelta = posX - prevX;
+      if (Math.abs(moveDelta) > 0.01) {
+        if (moveDelta > 0) {
+          currentDirection = 'right';
+        } else {
+          currentDirection = 'left';
+        }
+      }
+
       // --- 歩行アニメーションの制御 ---
       let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
       
       if (movedDistance > 0.05) {
-        // 動いているときはコマ送りのスピードを調整（通常時はゆっくり、ブースト時はキビキビ）
         animTimer++;
         let interval = boostActive ? 3 : 10; 
 
         if (animTimer > interval) {
-          frameIndex = (frameIndex + 1) % totalFrames;
-          // walk1.jpg 〜 walk8.jpg を順番に切り替え
-          player.src = `walk${frameIndex + 1}.jpg`;
+          if (currentDirection === 'right') {
+            // 右に行くときは walk1.jpg 〜 walk4.jpg をループ
+            rightFrameIndex = (rightFrameIndex + 1) % 4;
+            player.src = `walk${rightFrameIndex + 1}.jpg`;
+          } else {
+            // 左に行くときは walk5.jpg 〜 walk8.jpg をループ
+            leftFrameIndex = (leftFrameIndex + 1) % 4;
+            player.src = `walk${5 + leftFrameIndex}.jpg`;
+          }
           animTimer = 0;
         }
       } else {
-        // 止まっているときは最初の立ち姿（walk1.jpg）に戻す
-        player.src = 'walk1.jpg';
+        // 止まっているときは、直前を向いていたときのポーズで静止
+        player.src = (currentDirection === 'right') ? 'walk1.jpg' : 'walk5.jpg';
       }
 
       requestAnimationFrame(update);
