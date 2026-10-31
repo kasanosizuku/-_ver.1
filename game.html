@@ -232,7 +232,7 @@
         if (b.state === 'warning') {
           // 1. 警告フェーズ：影が大きく・濃くなっていく
           b.timer++;
-          let progress = b.timer / 90; // 約1.5秒間
+          let progress = b.timer / 180; // 約1.5秒間
 
           b.warningElement.style.display = 'block';
           b.warningElement.style.left = b.x + 'px';
@@ -248,7 +248,7 @@
 
           b.element.style.display = 'none';
 
-          if (b.timer >= 90) {
+          if (b.timer >= 180) {
             b.state = 'falling';
             b.timer = 0;
             b.warningElement.style.display = 'none';
