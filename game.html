@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>君のまっくろくろすけ - ゲーム画面</title>
+  <title>君のまっくろくろすけ - 2分間バケツ避けサバイバル</title>
   <style>
     body {
       margin: 0;
@@ -20,6 +20,7 @@
       font-size: 18px;
       font-weight: bold;
       color: #333;
+      z-index: 10;
     }
     #player {
       position: absolute;
@@ -27,13 +28,41 @@
       height: 100px;
       object-fit: contain;
     }
+    /* 落ちてくるバケツの画像用スタイル */
+    .bucket {
+      position: absolute;
+      width: 45px;
+      height: 45px;
+      object-fit: contain;
+    }
+    /* 結果表示画面（ゲームオーバー / クリア共通） */
+    #result-screen {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 30px 50px;
+      border-radius: 15px;
+      font-size: 32px;
+      font-weight: bold;
+      display: none;
+      text-align: center;
+      z-index: 100;
+    }
   </style>
 </head>
 
 <body>
 
-  <div id="info">スマホからのデータ受信待機中...</div>
+  <div id="info">残り時間: 2:00 | バケツ数: 3 | ブースト: OFF</div>
   <img id="player" src="walk1.jpg" alt="まっくろくろすけ">
+  
+  <div id="result-screen">
+    <span id="result-text">GAME OVER 🔥</span><br>
+    <span style="font-size: 18px; font-weight: normal; color: #ddd;">画面をリロードして再挑戦！</span>
+  </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -56,18 +85,48 @@
 
     const player = document.getElementById('player');
     const info = document.getElementById('info');
+    const resultScreen = document.getElementById('result-screen');
+    const resultText = document.getElementById('result-text');
 
     let posX = window.innerWidth / 2;
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
     let boostActive = false;
+    let isGameOver = false;
 
-    // アニメーション管理用
+    // 制限時間（2分 = 120秒）
+    let timeLeft = 120;
+    let timerCounter = 0;
+
+    // アニメーション管理
     let animTimer = 0;
-    let rightFrameIndex = 0; // 右移動用 (0〜3 → walk1〜4)
-    let leftFrameIndex = 0;  // 左移動用 (0〜3 → walk5〜8)
-    let currentDirection = 'right'; // 向きを記憶する変数
+    let rightFrameIndex = 0;
+    let leftFrameIndex = 0;
+    let currentDirection = 'right';
+
+    // 最大15個までのバケツを管理する配列（最初は3個からスタートし、時間経過で増殖）
+    const buckets = [];
+    const maxBuckets = 15;
+    let activeBucketCount = 3; // 初期バケツ数
+
+    for (let i = 0; i < maxBuckets; i++) {
+      const img = document.createElement('img');
+      img.src = 'bucket.png'; // バケツの画像ファイル名
+      img.className = 'bucket';
+      // 最初は最初の3個以外は非表示にしておく
+      if (i >= activeBucketCount) {
+        img.style.display = 'none';
+      }
+      document.body.appendChild(img);
+      
+      buckets.push({
+        element: img,
+        x: Math.random() * (window.innerWidth - 45),
+        y: -Math.random() * window.innerHeight,
+        speed: 3 + Math.random() * 3
+      });
+    }
 
     // Firebase からデータを受信
     database.ref('player1/move').on('value', (snapshot) => {
@@ -76,12 +135,35 @@
         inputX = data.x; 
         inputY = data.y; 
         boostActive = data.boost || false;
-        info.textContent = `まっくろくろすけ出撃中 [ブースト: ${boostActive ? 'ON 🔥' : 'OFF'}]`;
       }
     });
 
+    // 1秒ごとに残り時間を減らし、難易度（バケツの数）を増やすタイマー
+    setInterval(() => {
+      if (isGameOver) return;
+
+      timeLeft--;
+      timerCounter++;
+
+      // 10秒経過するごとに、落ちてくるバケツの数を1個ずつ増やす（最大15個まで）
+      if (timerCounter % 10 === 0 && activeBucketCount < maxBuckets) {
+        activeBucketCount++;
+        // 増えた分のバケツを表示状態にする
+        buckets[activeBucketCount - 1].element.style.display = 'block';
+      }
+
+      // 2分（120秒）経過したらクリア！
+      if (timeLeft <= 0) {
+        isGameOver = true;
+        resultText.innerHTML = "CLEAR!! 🎊<br><span style='font-size:20px;'>おめでとう！2分間生き残りました！</span>";
+        resultScreen.style.display = 'block';
+      }
+    }, 1000);
+
     // 画面の更新（ゲームループ）
     function update() {
+      if (isGameOver) return;
+
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
@@ -100,44 +182,31 @@
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
 
-      // --- 向きの判定（左右どちらに進んでいるか） ---
-      let moveDelta = posX - prevX;
-      if (Math.abs(moveDelta) > 0.01) {
-        if (moveDelta > 0) {
-          currentDirection = 'right';
-        } else {
-          currentDirection = 'left';
+      // --- バケツの落下と当たり判定の処理 ---
+      for (let i = 0; i < activeBucketCount; i++) {
+        let b = buckets[i];
+        b.y += b.speed;
+        
+        // 画面の下まで落ちたら上部に戻す
+        if (b.y > window.innerHeight) {
+          b.y = -50;
+          b.x = Math.random() * (window.innerWidth - 45);
+          b.speed = 3 + Math.random() * 3;
         }
-      }
 
-      // --- 歩行アニメーションの制御 ---
-      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
-      
-      if (movedDistance > 0.05) {
-        animTimer++;
-        let interval = boostActive ? 3 : 10; 
+        b.element.style.left = b.x + 'px';
+        b.element.style.top = b.y + 'px';
 
-        if (animTimer > interval) {
-          if (currentDirection === 'right') {
-            // 右に行くときは walk1.jpg 〜 walk4.jpg をループ
-            rightFrameIndex = (rightFrameIndex + 1) % 4;
-            player.src = `walk${rightFrameIndex + 1}.jpg`;
-          } else {
-            // 左に行くときは walk5.jpg 〜 walk8.jpg をループ
-            leftFrameIndex = (leftFrameIndex + 1) % 4;
-            player.src = `walk${5 + leftFrameIndex}.jpg`;
-          }
-          animTimer = 0;
+        // 当たり判定
+        let hitMargin = 25;
+        if (
+          posX + hitMargin < b.x + 45 &&
+          posX + 100 - hitMargin > b.x &&
+          posY + hitMargin < b.y + 45 &&
+          posY + 100 - hitMargin > b.y
+        ) {
+          // バケツに当たったらゲームオーバー
+          isGameOver = true;
+          resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>バケツに当たってしまった…！</span>";
+          resultScreen.style.display = 'block';
         }
-      } else {
-        // 止まっているときは、直前を向いていたときのポーズで静止
-        player.src = (currentDirection === 'right') ? 'walk1.jpg' : 'walk5.jpg';
-      }
-
-      requestAnimationFrame(update);
-    }
-
-    update();
-  </script>
-</body>
-</html>
