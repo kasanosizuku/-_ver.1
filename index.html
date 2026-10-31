@@ -100,9 +100,9 @@
       const gamma = rawGamma - initialGamma;
       const beta = rawBeta - initialBeta;
 
-      // Firebase にリアルタイム更新（感度0.5倍）
+      // Firebase にリアルタイム更新
       database.ref('player1/move').set({
-        x: gamma * 0.5,
+        x: gamma * 0.１,
         y: beta
       });
     }
