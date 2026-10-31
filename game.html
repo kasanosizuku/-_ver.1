@@ -198,7 +198,7 @@
 
 　　　 // --- 1. スピード・操作感の補正設定（ここでブースト倍率も調整できます） ---
       const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
-      const baseSpeed = 0.001;      // 通常時の移動スピード
+      const baseSpeed = 0.005;      // 通常時の移動スピード
       const boostMultiplier = 2.0; // ★ブースト時のスピード倍率（ここで調整！）
 
       // 2. 傾きの取得と持ち手の角度調整
@@ -232,7 +232,7 @@
         if (b.state === 'warning') {
           // 1. 警告フェーズ：影が大きく・濃くなっていく
           b.timer++;
-          let progress = b.timer / 180; // 約1.5秒間
+          let progress = b.timer / 240; // 約1.5秒間
 
           b.warningElement.style.display = 'block';
           b.warningElement.style.left = b.x + 'px';
@@ -248,7 +248,7 @@
 
           b.element.style.display = 'none';
 
-          if (b.timer >= 180) {
+          if (b.timer >= 240) {
             b.state = 'falling';
             b.timer = 0;
             b.warningElement.style.display = 'none';
@@ -277,7 +277,7 @@
           let playerCenterY = posY + 30;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
-          let bucketRadius = finalSize / 4;
+          let bucketRadius = finalSize / 5;
           let playerRadius = 20; 
 
           if (distance < (bucketRadius + playerRadius)) {
