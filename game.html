@@ -1,31 +1,36 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>メインゲーム画面</title>
+  <title>君のまっくろくろすけ - ゲーム画面</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      background-color: #87CEEB;
+      background-color: #87CEEB; /* 空の背景色 */
       font-family: sans-serif;
     }
     #info {
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.9);
       padding: 10px 20px;
       border-radius: 8px;
       font-size: 18px;
+      font-weight: bold;
+      color: #333;
     }
-    #witch {
+    /* まっくろくろすけキャラクター（歩行アニメーション対応） */
+    #player {
       position: absolute;
-      width: 60px;
-      height: 60px;
-      background-color: #8e44ad;
-      border-radius: 50%;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      width: 80px;
+      height: 80px;
+      /* ここにご用意いただいた画像のファイル名を設定してください */
+      background-image: url('makkuro.png'); 
+      /* 横長の連続画像を想定し、アニメーションさせる設定 */
+      background-size: 400px 80px; /* 例: 5コマ分の横長画像の場合 */
+      background-position: 0 0;
     }
   </style>
 </head>
@@ -33,8 +38,9 @@
 <body>
 
   <div id="info">スマホからのデータ受信待機中...</div>
-  <div id="witch"></div>
+  <div id="player"></div>
 
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -53,14 +59,19 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    const witch = document.getElementById('witch');
+    const player = document.getElementById('player');
     const info = document.getElementById('info');
 
     let posX = window.innerWidth / 2;
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
-    let boostActive = false; // ブースト状態
+    let boostActive = false;
+
+    // 歩行アニメーション用の変数
+    let animTimer = 0;
+    let frameIndex = 0;
+    const totalFrames = 4; // 画像に含まれる歩行フレーム数に合わせて変更してください
 
     // Firebase からデータを受信
     database.ref('player1/move').on('value', (snapshot) => {
@@ -68,28 +79,47 @@
       if (data) {
         inputX = data.x; 
         inputY = data.y; 
-        boostActive = data.boost || false; // ブースト状態を受け取る
-        info.textContent = `受信中 [ブースト: ${boostActive ? 'ON' : 'OFF'}]`;
+        boostActive = data.boost || false;
+        info.textContent = `まっくろくろすけ出撃中 [ブースト: ${boostActive ? 'ON 🔥' : 'OFF'}]`;
       }
     });
 
     // 画面の更新（ゲームループ）
     function update() {
+      // 目標座標の計算
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      // ★ここがポイント：通常時は「0.04」でかなりゆっくり、ブースト時は「0.3」でキビキビ動かす
-      let smoothness = boostActive ? 0.3 : 0.01; 
+      // 通常時は「0.02」でかなりゆっくりフワフワ、ブースト時は「0.3」でキビキビ高速移動！
+      let smoothness = boostActive ? 0.3 : 0.02; 
+
+      let prevX = posX;
+      let prevY = posY;
 
       posX += (targetX - posX) * smoothness;
       posY += (targetY - posY) * smoothness;
 
       // 画面外制限
-      posX = Math.max(0, Math.min(window.innerWidth - 60, posX));
-      posY = Math.max(0, Math.min(window.innerHeight - 60, posY));
+      posX = Math.max(0, Math.min(window.innerWidth - 80, posX));
+      posY = Math.max(0, Math.min(window.innerHeight - 80, posY));
 
-      witch.style.left = posX + 'px';
-      witch.style.top = posY + 'px';
+      player.style.left = posX + 'px';
+      player.style.top = posY + 'px';
+
+      // --- 歩行アニメーションの制御 ---
+      // キャラクターが動いている（前回の位置から少しずれている）ときだけ足が動く
+      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
+      if (movedDistance > 0.1) {
+        animTimer++;
+        // スピード（ブースト中など）に合わせてアニメーションの切り替わりを早くする
+        let interval = boostActive ? 4 : 12; 
+
+        if (animTimer > interval) {
+          frameIndex = (frameIndex + 1) % totalFrames;
+          player.style.backgroundPosition = `-${frameIndex * 80}px 0px`;
+          animTimer = 0;
+        }
+      }
 
       requestAnimationFrame(update);
     }
