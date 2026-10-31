@@ -46,7 +46,7 @@
     .bucket {
       position: absolute;
       object-fit: contain;
-      transform: translate(-50%, -50%); /* 中心基準に統一 */
+      transform: translate(-50%, -50%);
       display: none;
       z-index: 4;
     }
@@ -54,7 +54,7 @@
     .bucket-afterimage {
       position: absolute;
       object-fit: contain;
-      transform: translate(-50%, -50%); /* 中心基準に統一 */
+      transform: translate(-50%, -50%);
       z-index: 3;
       pointer-events: none;
       opacity: 0.4;
@@ -150,8 +150,8 @@
         state: 'warning',
         timer: 0,
         scale: 0.1,
-        speed: 0.008, // バケツのスピード（遅め）
-        afterimageCounter: 0 // バケツ用残像タイマー
+        speed: 0.008,
+        afterimageCounter: 0
       });
     }
 
@@ -220,11 +220,10 @@
             b.element.style.display = 'block';
           }
         } else if (b.state === 'falling') {
-          b.scale += b.speed; // 手前に近づくにつれて大きくなる
+          b.scale += b.speed;
 
           let currentSize = 180 * b.scale;
 
-          // CSSの transform: translate(-50%, -50%) を使うことで中心座標をそのまま指定できる
           b.element.style.width = currentSize + 'px';
           b.element.style.height = currentSize + 'px';
           b.element.style.left = b.x + 'px';
@@ -242,7 +241,6 @@
             afterimage.style.top = b.y + 'px';
             document.body.appendChild(afterimage);
 
-            // フェードアウトして削除
             setTimeout(() => {
               afterimage.style.opacity = '0';
             }, 20);
@@ -259,13 +257,16 @@
             b.speed = 0.005 + Math.random() * 0.006;
           }
 
-          // 当たり判定（お互いの中心同士の距離で判定）
-          let hitMargin = 40;
+          // --- 当たり判定の修正（バケツの手前側かつ、距離が十分に縮まったときのみ） ---
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
-          if (b.scale > 0.6 && distance < (currentSize / 2 + hitMargin)) {
+          // 【変更】バケツが十分に手前に来ていて（scale > 0.75）、かつ中心同士の距離がかなり近いときだけに調整
+          let bucketRadius = (currentSize / 2) * 0.6; // 画像の余分な余白を考慮して当たり判定を少し小さくする
+          let playerRadius = 50; // まっくろくろすけの当たりの大きさ
+
+          if (b.scale > 0.75 && distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
             resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>飛んできたバケツに直撃した…！</span>";
             resultScreen.style.display = 'block';
