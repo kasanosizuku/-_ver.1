@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>メインゲーム画面</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #87CEEB; /* 空の色 */
+      font-family: sans-serif;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    /* 操作する魔女キャラクター（テスト用の紫の丸） */
+    #witch {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background-color: #8e44ad;
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      transition: transform 0.05s ease-out;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="info">スマホからのデータ受信待機中...</div>
+  <div id="witch"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // ★ここをご自分の firebaseConfig に書き換えてください
+    const firebaseConfig = {
+     apiKey: "AIzaSyD1pVotHvYA_Abc0lwxxYMzlMkePwBx89A",
+     authDomain: "bunnkasai-test-c9f1d.firebaseapp.com",
+     databaseURL: "https://bunnkasai-test-c9f1d-default-rtdb.asia-southeast1.firebasedatabase.app",
+     projectId: "bunnkasai-test-c9f1d",
+     storageBucket: "bunnkasai-test-c9f1d.firebasestorage.app",
+     messagingSenderId: "626413070465",
+     appId: "1:626413070465:web:2cb19f7bb88d1fd2240580",
+     measurementId: "G-JJNMNWL4M1"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    const witch = document.getElementById('witch');
+    const info = document.getElementById('info');
+
+    let posX = window.innerWidth / 2;
+    let posY = window.innerHeight / 2;
+    let inputX = 0;
+    let inputY = 0;
+
+    // Firebase から数値をリアルタイム受信
+    database.ref('player1/move').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        inputX = data.x; // gamma (左右)
+        inputY = data.y; // beta (前後)
+        info.textContent = `受信中 - X: ${Math.round(inputX)}, Y: ${Math.round(inputY)}`;
+      }
+    });
+
+    // 画面の更新（ゲームループ）
+    function update() {
+      // 傾きに応じて位置を加算 (0.4はスピード調整パラメータ)
+      posX += inputX * 0.4;
+      posY += (inputY - 30) * 0.4; // スマホを斜め30度くらいで構えるのを基準にする
+
+      // 画面外に出ていかないように制限
+      posX = Math.max(0, Math.min(window.innerWidth - 60, posX));
+      posY = Math.max(0, Math.min(window.innerHeight - 60, posY));
+
+      witch.style.left = posX + 'px';
+      witch.style.top = posY + 'px';
+
+      requestAnimationFrame(update);
+    }
+
+    update();
+  </script>
+</body>
+</html>
