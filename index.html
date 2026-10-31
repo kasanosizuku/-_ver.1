@@ -87,8 +87,8 @@
 
       // 傾き具合によるスピード調整
       database.ref('player1/move').set({
-        x: gamma * 0.5,
-        y: beta,
+        x: gamma * 0.5, // 半分の感度で穏やかに動く
+        y: beta
       });
     }
 
