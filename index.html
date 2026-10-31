@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>君のまっくろくろすけ</title>
+  <title>君のまっくろくろすけ（コントローラー）</title>
   <style>
     body {
       font-family: sans-serif;
@@ -33,16 +33,13 @@
 
   <h1>君のまっくろくろすけ</h1>
   <p>ボタンを押してからスマホを傾けてね！</p>
-  <p style="color: #ffeb3b; font-size: 14px;">※注意！ボタンを押す前にスマホを操作しやすい角度に構えた状態にしていないと，正確に反映されません。</p>
   <button id="start-btn">ゲームスタート！</button>
   <div id="status">未接続</div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
   <script>
-    // ★ここをご自分の firebaseConfig に書き換えてください
     const firebaseConfig = {
      apiKey: "AIzaSyD1pVotHvYA_Abc0lwxxYMzlMkePwBx89A",
      authDomain: "bunnkasai-test-c9f1d.firebaseapp.com",
@@ -54,24 +51,21 @@
      measurementId: "G-JJNMNWL4M1"
     };
 
-    // Firebase 初期化
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
     const startBtn = document.getElementById('start-btn');
     const statusDiv = document.getElementById('status');
 
-    let initialBeta = null;   // 縦方向の基準値
-    let initialGamma = null;  // 横方向の基準値
+    let lastSendTime = 0;
 
     async function startSensor() {
-      // iOS（iPhone）のセンサー許可申請
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const permissionState = await DeviceOrientationEvent.requestPermission();
           if (permissionState === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
-            statusDiv.textContent = "送信中...";
+            statusDiv.textContent = "送信中（傾きモード）";
           } else {
             alert("センサーの使用が拒否されました");
           }
@@ -79,31 +73,24 @@
           console.error(error);
         }
       } else {
-        // Android / PC等
         window.addEventListener('deviceorientation', handleOrientation);
-        statusDiv.textContent = "送信中...";
+        statusDiv.textContent = "送信中（傾きモード）";
       }
     }
 
     function handleOrientation(event) {
-      const rawGamma = event.gamma || 0; // 左右傾き
-      const rawBeta = event.beta || 0;   // 前後傾き
+      const gamma = event.gamma || 0; 
+      const beta = event.beta || 0;   
 
-      // 【重要】ボタンを押した瞬間の角度を「基準（0）」として最初に一度だけ記録する
-      if (initialBeta === null || initialGamma === null) {
-        initialBeta = rawBeta;
-        initialGamma = rawGamma;
-        statusDiv.textContent = "送信中（基準セット完了）";
-      }
+      // データの送信頻度を少し抑えて通信の詰まりを防ぐ（約50ミリ秒に1回）
+      const now = Date.now();
+      if (now - lastSendTime < 50) return;
+      lastSendTime = now;
 
-      // 基準からの差分を計算（これにより、構えた位置が真ん中になる）
-      const gamma = rawGamma - initialGamma;
-      const beta = rawBeta - initialBeta;
-
-      // Firebase にリアルタイム更新
+      // 【テスト用】感度を極端に小さくしてみる（例: 0.2倍）
       database.ref('player1/move').set({
-        x: gamma * 0.0001,
-        y: beta
+        x: gamma * 0.2, 
+        y: beta * 0.2
       });
     }
 
