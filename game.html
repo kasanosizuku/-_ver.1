@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -150,7 +150,7 @@
         state: 'warning',
         timer: 0,
         scale: 0.1,
-        speed: 0.004, // 【変更】バケツのスピードをさらにゆっくりに変更
+        speed: 0.004,
         afterimageCounter: 0
       });
     }
@@ -201,33 +201,29 @@
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
 
-      // --- 「手前から飛んでくる」バケツと警告の処理 ---
-      // --- 「影（危険表示）が拡大・濃縮し、直前にバケツが出現する」処理 ---
+      // --- 影の拡大とバケツの出現処理 ---
       for (let i = 0; i < activeBucketCount; i++) {
         let b = buckets[i];
 
         if (b.state === 'warning') {
-          // 1. 警告フェーズ：時間経過で影（赤丸）が大きく・濃くなっていく
+          // 1. 警告フェーズ：影が大きく・濃くなっていく
           b.timer++;
-          let progress = b.timer / 90; // 0.0 から 1.0 へ（約1.5秒かけて進行）
+          let progress = b.timer / 90; // 約1.5秒間
 
           b.warningElement.style.display = 'block';
           b.warningElement.style.left = b.x + 'px';
           b.warningElement.style.top = b.y + 'px';
 
-          // 影のサイズが徐々に大きく（最大 150px × 60px 程度）
           let warningWidth = 30 + progress * 120;
           let warningHeight = 10 + progress * 50;
           b.warningElement.style.width = warningWidth + 'px';
           b.warningElement.style.height = warningHeight + 'px';
 
-          // 影の濃さ（不透明度）も徐々に濃く（0.1 ～ 0.8）
           b.warningElement.style.backgroundColor = `rgba(255, 0, 0, ${0.1 + progress * 0.7})`;
           b.warningElement.style.opacity = 0.2 + progress * 0.8;
 
-          b.element.style.display = 'none'; // バケツはまだ見せない
+          b.element.style.display = 'none';
 
-          // ゲージが溜まり切ったらバケツ出現フェーズへ
           if (b.timer >= 90) {
             b.state = 'falling';
             b.timer = 0;
@@ -236,41 +232,36 @@
           }
 
         } else if (b.state === 'falling') {
-          // 2. 終了直前の落下面：完成した大きさでバケツがドカンと一瞬出現！
+          // 2. バケツ出現フェーズ
           b.timer++;
 
-          let finalSize = 250; // バケツの完成サイズ（お好みで調整してください）
+          let finalSize = 250; // バケツの表示サイズ
           b.element.style.width = finalSize + 'px';
           b.element.style.height = finalSize + 'px';
-          b.element.style.left = (b.x - finalSize / 2) + 'px';
-          b.element.style.top = (b.y - finalSize / 2) + 'px';
-          b.element.style.opacity = 1.0; // 100% くっきり表示
+          b.element.style.left = b.x + 'px';
+          b.element.style.top = b.y + 'px';
+          b.element.style.opacity = 1.0;
 
-          // 当たり判定（バケツが出現している瞬間）
-          let hitMargin = 30;
+          // 当たり判定
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
-          if (distance < (finalSize / 2 + hitMargin)) {
+          let bucketRadius = finalSize / 2;
+          let playerRadius = 40; // 当たり判定の広さ調整
+
+          if (distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
-            resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>落下してきたバケツに潰された…！</span>";
+            resultText.innerHTML = "めいに捕まった。。。";
             resultScreen.style.display = 'block';
           }
 
-          // バケツを表示してから一定時間（例：15フレーム ≒ 約0.25秒）経ったら次の警告へリセット
+          // 約0.25秒後にリセットして次の位置へ
           if (b.timer > 15) {
             b.state = 'warning';
             b.timer = 0;
             b.x = Math.random() * (window.innerWidth - 200) + 100;
             b.y = Math.random() * (window.innerHeight - 200) + 100;
-          }
-        }
-      }
-          if (b.scale > 0.85 && distance < (bucketRadius + playerRadius)) {
-            isGameOver = true;
-            resultText.innerHTML = "めいに捕まった。。。";
-            resultScreen.style.display = 'block';
           }
         }
       }
