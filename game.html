@@ -202,71 +202,71 @@
       player.style.top = posY + 'px';
 
       // --- 「手前から飛んでくる」バケツと警告の処理 ---
+      // --- 「影（危険表示）が拡大・濃縮し、直前にバケツが出現する」処理 ---
       for (let i = 0; i < activeBucketCount; i++) {
         let b = buckets[i];
 
         if (b.state === 'warning') {
+          // 1. 警告フェーズ：時間経過で影（赤丸）が大きく・濃くなっていく
+          b.timer++;
+          let progress = b.timer / 90; // 0.0 から 1.0 へ（約1.5秒かけて進行）
+
           b.warningElement.style.display = 'block';
           b.warningElement.style.left = b.x + 'px';
           b.warningElement.style.top = b.y + 'px';
-          b.element.style.display = 'none';
 
-          b.timer++;
-          if (b.timer > 120) {
+          // 影のサイズが徐々に大きく（最大 150px × 60px 程度）
+          let warningWidth = 30 + progress * 120;
+          let warningHeight = 10 + progress * 50;
+          b.warningElement.style.width = warningWidth + 'px';
+          b.warningElement.style.height = warningHeight + 'px';
+
+          // 影の濃さ（不透明度）も徐々に濃く（0.1 ～ 0.8）
+          b.warningElement.style.backgroundColor = `rgba(255, 0, 0, ${0.1 + progress * 0.7})`;
+          b.warningElement.style.opacity = 0.2 + progress * 0.8;
+
+          b.element.style.display = 'none'; // バケツはまだ見せない
+
+          // ゲージが溜まり切ったらバケツ出現フェーズへ
+          if (b.timer >= 90) {
             b.state = 'falling';
             b.timer = 0;
-            b.scale = 0.1;
             b.warningElement.style.display = 'none';
             b.element.style.display = 'block';
           }
+
         } else if (b.state === 'falling') {
-          b.scale += b.speed;
+          // 2. 終了直前の落下面：完成した大きさでバケツがドカンと一瞬出現！
+          b.timer++;
 
-          let currentSize = 500 * b.scale;
+          let finalSize = 250; // バケツの完成サイズ（お好みで調整してください）
+          b.element.style.width = finalSize + 'px';
+          b.element.style.height = finalSize + 'px';
+          b.element.style.left = (b.x - finalSize / 2) + 'px';
+          b.element.style.top = (b.y - finalSize / 2) + 'px';
+          b.element.style.opacity = 1.0; // 100% くっきり表示
 
-          b.element.style.width = currentSize + 'px';
-          b.element.style.height = currentSize + 'px';
-          b.element.style.left = b.x + 'px';
-          b.element.style.top = b.y + 'px';
-
-          b.element.style.opacity = b.scale;
-          // --- バケツの残像生成処理 ---
-          b.afterimageCounter++;
-          if (b.afterimageCounter % 4 === 0 && b.scale > 0.2) {
-            const afterimage = document.createElement('img');
-            afterimage.src = 'bucket.png';
-            afterimage.className = 'bucket-afterimage';
-            afterimage.style.width = currentSize + 'px';
-            afterimage.style.height = currentSize + 'px';
-            afterimage.style.left = b.x + 'px';
-            afterimage.style.top = b.y + 'px';
-            document.body.appendChild(afterimage);
-
-            setTimeout(() => {
-              afterimage.style.opacity = '0';
-            }, 20);
-            setTimeout(() => {
-              afterimage.remove();
-            }, 250);
-          }
-
-          // 到達時のループリセット
-          if (b.scale >= 1.0) {
-            b.state = 'warning';
-            b.x = Math.random() * (window.innerWidth - 200) + 100;
-            b.y = Math.random() * (window.innerHeight - 200) + 100;
-            b.speed = 0.003 + Math.random() * 0.004;
-          }
-
-          // --- 当たり判定（さらに厳密に調整） ---
+          // 当たり判定（バケツが出現している瞬間）
+          let hitMargin = 30;
           let playerCenterX = posX + 80;
           let playerCenterY = posY + 80;
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
-          // 【変更】手前ギリギリ（scale > 0.85）かつ、判定サイズを画像よりも一回り小さく（0.45倍）設定
-          let bucketRadius = (currentSize / 2) * 0.45; 
-          let playerRadius = 45; // くろすけ側の当たり判定
+          if (distance < (finalSize / 2 + hitMargin)) {
+            isGameOver = true;
+            resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>落下してきたバケツに潰された…！</span>";
+            resultScreen.style.display = 'block';
+          }
 
+          // バケツを表示してから一定時間（例：15フレーム ≒ 約0.25秒）経ったら次の警告へリセット
+          if (b.timer > 15) {
+            b.state = 'warning';
+            b.timer = 0;
+            b.x = Math.random() * (window.innerWidth - 200) + 100;
+            b.y = Math.random() * (window.innerHeight - 200) + 100;
+          }
+        }
+      }
           if (b.scale > 0.85 && distance < (bucketRadius + playerRadius)) {
             isGameOver = true;
             resultText.innerHTML = "めいに捕まった。。。";
