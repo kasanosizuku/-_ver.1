@@ -196,14 +196,25 @@
       let prevX = posX;
       let prevY = posY;
 
-      // --- ★傾きを「速度（移動速度）」として扱うように変更 ---
-      // ブースト時（boostActive）は移動スピードを2倍にする
-      let speedMultiplier = boostActive ? 0.6 : 0.03;
+// --- 1. スピード・操作感の補正設定（ここでブースト倍率も調整できます） ---
+      const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
+      const baseSpeed = 0.05;      // 通常時の移動スピード
+      const boostMultiplier = 2.0; // ★ブースト時のスピード倍率（ここで調整！）
 
-      // 傾き（inputX, inputY）に応じて、位置を直接加算・減算して進み続ける
-      // ※スマホの基本の傾き（持ち方）に合わせて inputY - 30 など調整可能です
-      posX += inputX * speedMultiplier;
-      posY += (inputY - 30) * speedMultiplier;
+      // 2. 傾きの取得と持ち手の角度調整
+      let rawX = inputX;
+      let rawY = inputY - 30; // 縦の持ち方オフセット
+
+      // 3. デッドゾーン（微小な傾きをカットして勝手に動かないようにする）
+      if (Math.abs(rawX) < deadzone) rawX = 0;
+      if (Math.abs(rawY) < deadzone) rawY = 0;
+
+      // 5. ブースト中のスピード適用
+      let currentSpeed = boostActive ? (baseSpeed * boostMultiplier) : baseSpeed;
+
+      // 6. 速度を座標に加算して進み続ける処理
+      posX += moveX * currentSpeed * 10;
+      posY += moveY * currentSpeed * 10;
 
       posX = Math.max(0, Math.min(window.innerWidth - 160, posX));
       posY = Math.max(0, Math.min(window.innerHeight - 160, posY));
