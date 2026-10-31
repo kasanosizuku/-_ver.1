@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -8,23 +8,34 @@
     body {
       font-family: sans-serif;
       text-align: center;
-      padding-top: 50px;
+      padding-top: 30px;
       background-color: #222;
       color: #fff;
     }
     button {
-      font-size: 24px;
-      padding: 15px 30px;
+      font-size: 20px;
+      padding: 12px 24px;
       border-radius: 10px;
       border: none;
       background-color: #ff4081;
       color: white;
       font-weight: bold;
       cursor: pointer;
+      margin: 10px;
+    }
+    /* ブーストボタンのデザイン（押している間色が変わる） */
+    #boost-btn {
+      background-color: #ff9800;
+      font-size: 24px;
+      padding: 20px 40px;
+    }
+    #boost-btn.active {
+      background-color: #e65100;
+      transform: scale(0.95);
     }
     #status {
-      margin-top: 20px;
-      font-size: 18px;
+      margin-top: 15px;
+      font-size: 16px;
       color: #00e676;
     }
   </style>
@@ -32,8 +43,10 @@
 <body>
 
   <h1>君のまっくろくろすけ</h1>
-  <p>ボタンを押してからスマホを傾けてね！</p>
   <button id="start-btn">ゲームスタート！</button>
+  <br>
+  <!-- ★ブーストボタンを追加 -->
+  <button id="boost-btn">わっ！</button>
   <div id="status">未接続</div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -55,9 +68,12 @@
     const database = firebase.database();
 
     const startBtn = document.getElementById('start-btn');
+    const boostBtn = document.getElementById('boost-btn');
     const statusDiv = document.getElementById('status');
 
-    let lastSendTime = 0;
+    let currentGamma = 0;
+    let currentBeta = 0;
+    let isBoosting = false; // ブースト中かどうかのフラグ
 
     async function startSensor() {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -65,7 +81,7 @@
           const permissionState = await DeviceOrientationEvent.requestPermission();
           if (permissionState === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
-            statusDiv.textContent = "送信中（傾きモード）";
+            statusDiv.textContent = "送信中...";
           } else {
             alert("センサーの使用が拒否されました");
           }
@@ -74,32 +90,43 @@
         }
       } else {
         window.addEventListener('deviceorientation', handleOrientation);
-        statusDiv.textContent = "送信中（傾きモード）";
+        statusDiv.textContent = "送信中...";
       }
     }
 
     function handleOrientation(event) {
-      const gamma = event.gamma || 0; 
-      const beta = event.beta || 0;   
+      currentGamma = event.gamma || 0;
+      currentBeta = event.beta || 0;
+      sendData();
+    }
 
-      // データの送信頻度を少し抑えて通信の詰まりを防ぐ（約50ミリ秒に1回）
-      const now = Date.now();
-      if (now - lastSendTime < 50) return;
-      lastSendTime = now;
-
-      const speedMultiplier = 0.03; // ← この数値を変えてみてください！
-      
-      const adjustedX = gamma * speedMultiplier;
-      const adjustedY = beta * speedMultiplier;
-
-      // 補正をかけたスピードそのものをFirebaseに送る
+    function sendData() {
       database.ref('player1/move').set({
-        x: adjustedX,
-        y: adjustedY
+        x: currentGamma,
+        y: currentBeta,
+        boost: isBoosting // ブーストの状態（true / false）を一緒に送る
       });
     }
 
     startBtn.addEventListener('click', startSensor);
+
+    // スマホのタッチ操作でブーストボタンのON/OFFを切り替える
+    boostBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isBoosting = true;
+      boostBtn.classList.add('active');
+      sendData();
+    });
+    boostBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      isBoosting = false;
+      boostBtn.classList.remove('active');
+      sendData();
+    });
+
+    // PCのマウスでもテストできるようにする場合
+    boostBtn.addEventListener('mousedown', () => { isBoosting = true; boostBtn.classList.add('active'); sendData(); });
+    boostBtn.addEventListener('mouseup', () => { isBoosting = false; boostBtn.classList.remove('active'); sendData(); });
   </script>
 </body>
 </html>
