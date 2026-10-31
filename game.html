@@ -77,9 +77,10 @@
 
     // 画面の更新（ゲームループ）
     function update() {
-      // 傾きに応じて位置を加算 (0.4はスピード調整パラメータ)
-      posX += inputX * 0.4;
-      posY += (inputY - 30) * 0.4; // スマホを斜め30度くらいで構えるのを基準にする
+      const speedFactor = 0.1; // ← 例：0.4を「0.8」にすると2倍速く、「0.2」にすると半分に遅くなります
+
+      posX += inputX * speedFactor;
+      posY += (inputY - 30) * speedFactor; 
 
       // 画面外に出ていかないように制限
       posX = Math.max(0, Math.min(window.innerWidth - 60, posX));
