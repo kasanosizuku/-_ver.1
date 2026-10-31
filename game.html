@@ -79,7 +79,7 @@
 <body>
 
   <div id="info">残り時間: 0:30 | バケツ数: 3 | ブースト: OFF</div>
-  <img id="player" src="walk1.jpg" alt="まっくろくろすけ">
+  <img id="player" src="walk1.png" alt="まっくろくろすけ">
   
   <div id="result-screen">
     <span id="result-text">GAME OVER 🔥</span><br>
@@ -293,15 +293,15 @@
         if (animTimer > interval) {
           if (currentDirection === 'right') {
             rightFrameIndex = (rightFrameIndex + 1) % 4;
-            player.src = `walk${rightFrameIndex + 1}.jpg`;
+            player.src = `walk${rightFrameIndex + 1}.png`;
           } else {
             leftFrameIndex = (leftFrameIndex + 1) % 4;
-            player.src = `walk${5 + leftFrameIndex}.jpg`;
+            player.src = `walk${5 + leftFrameIndex}.png`;
           }
           animTimer = 0;
         }
       } else {
-        player.src = (currentDirection === 'right') ? 'walk1.jpg' : 'walk5.jpg';
+        player.src = (currentDirection === 'right') ? 'walk1.png' : 'walk5.png';
       }
 
       requestAnimationFrame(update);
