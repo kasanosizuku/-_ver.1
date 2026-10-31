@@ -210,3 +210,44 @@
           resultText.innerHTML = "GAME OVER 🔥<br><span style='font-size:18px; font-weight:normal; color:#ddd;'>バケツに当たってしまった…！</span>";
           resultScreen.style.display = 'block';
         }
+      }
+
+      // 画面上の表示更新（残り時間と現在のバケツ数）
+      let minutes = Math.floor(timeLeft / 60);
+      let seconds = timeLeft % 60;
+      let formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+      info.textContent = `残り時間: ${minutes}:${formattedSeconds} | バケツ数: ${activeBucketCount} | ブースト: ${boostActive ? '🔥 ON' : 'OFF'}`;
+
+      // --- 左右の向きと歩行アニメーション制御 ---
+      let moveDelta = posX - prevX;
+      if (Math.abs(moveDelta) > 0.001) {
+        if (moveDelta > 0) currentDirection = 'right';
+        else if (moveDelta < 0) currentDirection = 'left';
+      }
+
+      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
+      if (movedDistance > 0.05) {
+        animTimer++;
+        let interval = boostActive ? 3 : 10; 
+
+        if (animTimer > interval) {
+          if (currentDirection === 'right') {
+            rightFrameIndex = (rightFrameIndex + 1) % 4;
+            player.src = `walk${rightFrameIndex + 1}.jpg`;
+          } else {
+            leftFrameIndex = (leftFrameIndex + 1) % 4;
+            player.src = `walk${5 + leftFrameIndex}.jpg`;
+          }
+          animTimer = 0;
+        }
+      } else {
+        player.src = (currentDirection === 'right') ? 'walk1.jpg' : 'walk5.jpg';
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    update();
+  </script>
+</body>
+</html>
