@@ -212,6 +212,11 @@
       let moveX = rawX;
       let moveY = rawY;
 
+      //4.傾けた時の最大スピードの制御
+      const maxspeed = 10.0;
+      if (Math.abs(rawX) >  maxspeed) rawX = maxspeed;
+      if (Math.abs(rawY) >  maxspeed) rawY = maxspeed;
+
       // 5. ブースト中のスピード適用
       let currentSpeed = boostActive ? (baseSpeed * boostMultiplier) : baseSpeed;
 
