@@ -1,0 +1,275 @@
+/* ===== ゲーム中の部品のスタイル =====
+   こんぺいとう / ブーストの光 / ステージ2のめいの手 / 練習モードの説明。
+   絵（konpeito-*.svg / hand.svg）は同じフォルダに置く。
+   どんぐり・葉っぱの絵の変数（--acorn-a など）は menu.css で定義している。 */
+
+/* ===== こんぺいとう ===== */
+.konpeito {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 3px rgba(40, 50, 30, 0.35));
+  animation: konpeito-bob 1.6s ease-in-out infinite;
+}
+@keyframes konpeito-bob {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-6deg); }
+  50% { transform: translate(-50%, calc(-50% - 8px)) rotate(6deg); }
+}
+/* 消える直前は点滅 */
+.konpeito.blink { animation: konpeito-blink 0.4s steps(1) infinite; }
+@keyframes konpeito-blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* ひろったときに浮かぶ文字 */
+.pop-text {
+  position: absolute;
+  z-index: 30;
+  transform: translate(-50%, -50%);
+  font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', 'Yu Gothic', 'Meiryo', sans-serif;
+  font-size: 30px;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 2px 0 #fff;
+  animation: pop-rise 1.1s ease-out forwards;
+}
+.pop-text.pink { color: #d6336c; }
+.pop-text.yellow { color: #a47a00; }
+@keyframes pop-rise {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, -70%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
+}
+
+/* ブースト中はキャラがピンクに光る */
+#player.boosting {
+  filter: drop-shadow(0 0 8px rgba(255, 170, 200, 0.95)) drop-shadow(0 0 20px rgba(255, 210, 230, 0.9));
+}
+
+/* ===== ステージ2：めいの両手 ===== */
+.mei-hand {
+  position: absolute;
+  width: 640px;
+  height: 200px;
+  z-index: 6;
+  pointer-events: none;
+  display: none;
+}
+/* 袖を画面の外まで伸ばす（hand.svg の袖と同じ色・線） */
+.mei-hand::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 49px;
+  height: 122px;
+  width: 3000px;
+  box-sizing: border-box;
+  background: #8fb573;
+  border-top: 2px solid #5f8a4b;
+  border-bottom: 2px solid #5f8a4b;
+}
+.mei-hand img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* 右の手は、左の手を左右反転して使う */
+.mei-hand.right { transform: scaleX(-1); }
+
+/* 手が来る前の赤い帯（予告） */
+.hand-warn {
+  position: absolute;
+  z-index: 2;
+  display: none;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 0 22px;
+  border: 3px dashed rgba(255, 60, 60, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 0, 0, 0.2);
+  color: #fff;
+  font-size: 32px;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 6px rgba(150, 0, 0, 0.95);
+  pointer-events: none;
+}
+
+/* ===== 練習モードの説明 ===== */
+#tutorial {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255, 244, 200, 0.28), rgba(255, 244, 200, 0) 60%),
+    linear-gradient(rgba(34, 66, 44, 0.72), rgba(22, 48, 32, 0.86));
+  font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', 'Yu Gothic', 'Meiryo', sans-serif;
+}
+.tut-panel {
+  background: #fbf5e3;
+  border: 4px solid #8a6a43;
+  border-radius: 28px;
+  box-shadow:
+    0 12px 32px rgba(10, 30, 18, 0.5),
+    inset 0 0 0 7px #fbf5e3,
+    inset 0 0 0 9px #d9cca6;
+  padding: 24px 32px;
+  width: 700px;
+  max-width: 94vw;
+  max-height: 94vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  text-align: center;
+  color: #4a4130;
+}
+.tut-panel h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  letter-spacing: 0.05em;
+  color: #3f6b3a;
+}
+.tut-panel h2::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 30px;
+  background: var(--acorn-a) center / contain no-repeat;
+  vertical-align: -6px;
+  margin-right: 8px;
+}
+.tut-lead { margin: 0 0 10px; font-size: 14px; line-height: 1.6; color: #7a6f4f; }
+.tut-lead b { color: #b03a3a; }
+
+.tut-item {
+  background: #f3edd5;
+  border-radius: 16px;
+  padding: 10px 12px 8px;
+  margin-bottom: 10px;
+}
+.tut-name { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
+.tut-name.pink { color: #c2506a; }
+.tut-name.yellow { color: #9a761f; }
+.tut-text { margin: 8px 0 0; font-size: 14px; line-height: 1.6; }
+.tut-text b { color: #386641; }
+
+.tut-strip { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.tut-next { color: #a99b6e; font-size: 16px; }
+
+/* 1コマ */
+.tut-frame {
+  position: relative;
+  flex: none;
+  width: 150px;
+  height: 104px;
+  background: #e6f0d2;
+  border: 2px solid #c9d8a8;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tut-frame.wide { width: 180px; height: 118px; }
+.tut-cap {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: #6b7d4a;
+  z-index: 3;
+}
+.tut-chara { position: absolute; width: 56px; height: 56px; object-fit: contain; }
+.tut-chara.small { width: 44px; height: 44px; }
+.tut-chara.glow {
+  filter: drop-shadow(0 0 6px #ff9fbd) drop-shadow(0 0 12px #ffd0e0);
+}
+.tut-kon { position: absolute; width: 38px; height: 38px; }
+.tut-spark { position: absolute; font-size: 22px; }
+.tut-lines {
+  position: absolute;
+  left: 8px;
+  top: 52px;
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: -0.1em;
+}
+.tut-lines.pink { color: #ee7f9a; }
+.tut-badge {
+  position: absolute;
+  min-width: 34px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  box-sizing: border-box;
+}
+.tut-badge.pink { background: #e2698a; }
+.tut-badge.yellow { background: #d9a520; }
+.tut-score {
+  position: absolute;
+  padding: 4px 6px;
+  border: 2px solid #c9b46a;
+  border-radius: 8px;
+  background: #fffaf0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #7a6a30;
+}
+.tut-score b { font-size: 18px; color: #9a761f; }
+
+/* 「めいの手」の説明コマ */
+.tut-band {
+  position: absolute;
+  height: 44px;
+  background: rgba(255, 0, 0, 0.2);
+  border-top: 2px dashed rgba(255, 60, 60, 0.9);
+  border-bottom: 2px dashed rgba(255, 60, 60, 0.9);
+}
+.tut-hand { position: absolute; width: 220px; height: auto; }
+.tut-hand.right { transform: scaleX(-1); }
+.tut-bucket {
+  position: absolute;
+  width: 62px;
+  height: 62px;
+  left: 59px;
+  top: 55px;
+  object-fit: contain;
+}
+.tut-warn-mark {
+  position: absolute;
+  left: 82px;
+  top: 28px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #d6334c;
+}
+
+/* ボタンの列 */
+.tut-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.tut-nav .sub-btn { color: #6b5a3a; }
+.tut-dots { display: flex; gap: 6px; margin: 0 6px; }
+.tut-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d6c8a0;
+}
+.tut-dots span.on { background: #5b8c3a; }
