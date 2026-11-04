@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>君のまっくろくろすけ - 飛び出すバケツ避けサバイバル</title>
-  <!-- 待機画面のスタイルは menu.css に分離 -->
+  <!-- 待機画面のスタイルは menu.css、こんぺいとう・めいの手・練習の説明のスタイルは game-parts.css -->
   <link rel="stylesheet" href="menu.css">
+  <link rel="stylesheet" href="game-parts.css">
   <style>
     /* 背景が画面全体を基準に配置されるよう、高さを画面いっぱいにする */
     html {
@@ -73,7 +74,7 @@
       transition: opacity 0.25s ease-out;
     }
 
-    /* ===== 共通ボタン（待機画面と結果画面で共用） ===== */
+    /* ===== 共通ボタン（待機画面・結果画面・練習の説明で共用） ===== */
     button {
       font-family: inherit;
       cursor: pointer;
@@ -109,6 +110,8 @@
       transform: translate(-50%, -50%);
       font-size: 140px;
       font-weight: bold;
+      white-space: nowrap;
+      text-align: center;
       color: white;
       text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 4px black;
       z-index: 150;
@@ -179,7 +182,7 @@
 
 <body>
 
-  <div id="info">残り時間: 0:30 | バケツ数: 3 | ブースト: OFF</div>
+  <div id="info">残り時間: 0:30 | スコア: 0 | バケツ数: 3 | ブースト: OFF</div>
   <button id="btn-quit-practice">練習を終了</button>
   <img id="player" src="walk1.png" alt="まっくろくろすけ">
 
@@ -202,17 +205,18 @@
       <div class="section">
         <div class="section-title">ステージ</div>
         <div class="btn-row">
-          <button class="choice selected" data-stage="1">ステージ1</button>
-          <button class="choice" disabled>ステージ2<small>準備中</small></button>
+          <button class="choice selected" data-stage="1">ステージ1<small>飛び出すバケツ</small></button>
+          <button class="choice" data-stage="2">ステージ2<small>めいの両手がはさみうち！</small></button>
         </div>
       </div>
 
       <div class="howto">
         <b>遊び方</b><br>
         ・スマホを傾けると、その方向に進み続けます。<br>
-        ・ブーストをONにすると、スピードが2倍になります。<br>
-        ・<b>赤い影</b>が大きくなったら、バケツが出る合図！ その場所から離れよう。<br>
-        ・バケツに当たるとゲームオーバー。30秒逃げ切ればクリアです。
+        ・<b>ピンクのこんぺいとう</b>をひろうと、少しの間ブースト（スピード2倍）！<br>
+        ・<b>きいろのこんぺいとう</b>をひろうと、スコアが+1こ。<br>
+        ・<b>赤い影</b>が大きくなったら、バケツ（や、めいの手）が来る合図！ その場所から離れよう。<br>
+        ・当たるとゲームオーバー。30秒逃げ切ればクリアです。
       </div>
 
       <div id="controller-status" class="wait">コントローラー: 確認中...</div>
@@ -235,8 +239,10 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  <!-- 待機画面の制御（Menu オブジェクトを定義する） -->
+  <!-- 待機画面（Menu）/ ステージ2の手（Hands）/ 練習の説明（Tutorial） -->
   <script src="menu.js"></script>
+  <script src="hands.js"></script>
+  <script src="tutorial.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -254,9 +260,27 @@
     const database = firebase.database();
 
     // ===== 調整用の設定 =====
-    const GAME_TIME = 30;            // 通常モードの制限時間（秒）
-    const PRACTICE_BUCKETS = 6;      // 練習モードのバケツ数（最初から固定）
+    const GAME_TIME = 30;            // 制限時間（秒）。通常モードの両ステージで共通
     const COUNTDOWN_SECONDS = 3;     // スタート前のカウントダウン（秒）
+    const PLAYER_HIT_R = 38;         // めいの手に対するプレイヤーの当たり半径（バケツの判定は別）
+
+    // こんぺいとう
+    const KONPEITO_INTERVAL = 10;    // 何秒にひとつ出現するか（最初のひとつはスタート直後）
+    const KONPEITO_LIFETIME = 9;     // 出現してから消えるまでの秒数（最後の2秒は点滅）
+    const PINK_RATE = 0.5;           // ピンクが出る確率（残りはきいろ）
+    const PICKUP_RADIUS = 70;        // ひろえる距離（プレイヤーの中心から）
+    const BOOST_DURATION = 3;        // ブーストが続く秒数（ピンクをひろうたびに、ここからやり直し）
+    const BOOST_MULTIPLIER = 2.0;    // ブースト中のスピード倍率
+    const PRACTICE_COLORS = ['pink', 'yellow']; // 練習モード：最初のふたつは、この順番で出して説明する
+
+    // ステージごとの設定
+    //   buckets: 通常モードのバケツ数  start から、every 秒ごとに add ずつ増えて max まで
+    //   practiceBuckets: 練習モードのバケツ数（最初から固定）
+    //   hands: めいの手が出るか
+    const STAGE_CONFIG = {
+      1: { buckets: { start: 3, add: 6, every: 10, max: 15 }, practiceBuckets: 6, hands: false },
+      2: { buckets: { start: 2, add: 2, every: 10, max: 6 },  practiceBuckets: 3, hands: true }
+    };
 
     const player = document.getElementById('player');
     const info = document.getElementById('info');
@@ -272,14 +296,24 @@
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
-    let boostActive = false;
 
-    // 画面の状態: 'menu'（待機）/ 'countdown' / 'playing' / 'result'
-    // 選択中のモードは Menu.mode（'normal' または 'practice'）で取得する
+    // ブースト：こんぺいとう（ピンク）をひろうと、boostUntil（ゲーム開始からの秒）まで続く
+    let boostActive = false;
+    let boostUntil = 0;
+    let score = 0;                   // きいろのこんぺいとうの数
+
+    // 画面の状態: 'menu'（待機）/ 'tutorial'（練習の説明）/ 'countdown' / 'playing' / 'result'
     let gameState = 'menu';
+    let currentStage = 1;            // 遊んでいるステージ（ゲーム開始時に Menu から取る）
+    let currentMode = 'normal';      // 遊んでいるモード（'normal' または 'practice'）
     let playStartTime = 0;
+    let lastFrameTime = performance.now();
     let countdownTimer = null;
     let practiceHitCount = 0;        // 練習モードで当たった回数（練習開始ごとにリセット）
+
+    let konpeito = null;             // いま画面にあるこんぺいとう（なければ null）
+    let nextKonpeitoAt = 0;          // 次に出す時刻（ゲーム開始からの秒）
+    let konpeitoSpawnCount = 0;
 
     let animTimer = 0;
     let rightFrameIndex = 0;
@@ -290,6 +324,8 @@
     const buckets = [];
     const maxBuckets = 15;
     let activeBucketCount = 3;
+    // 最後のバケツは、ステージ2で「めいの手のすきま」専用に使う
+    const reservedBucket = () => buckets[maxBuckets - 1];
 
     for (let i = 0; i < maxBuckets; i ++) {
       const warningEl = document.createElement('div');
@@ -310,11 +346,13 @@
         timer: 0,
         scale: 0.1,
         speed: 0.004,
-        afterimageCounter: 0
+        afterimageCounter: 0,
+        warnFrames: 240,   // 警告の長さ（フレーム）
+        once: false        // true なら、1回落ちたあとは出番を待つ（すきま専用）
       });
     }
 
-    // ===== Firebase：コントローラー入力 =====
+    // ===== Firebase：コントローラー入力（傾きのみ。ブーストはこんぺいとうで発動する） =====
     let firstSnapshot = true;
 
     database.ref('player1/move').on('value', (snapshot) => {
@@ -322,7 +360,6 @@
       if (data) {
         inputX = data.x;
         inputY = data.y;
-        boostActive = data.boost || false;
       }
       // 最初のスナップショットは保存済みの値なので、受信とは数えない
       if (firstSnapshot) {
@@ -343,12 +380,13 @@
     }
 
     function updateInfo(elapsed) {
-      const boostText = boostActive ? '🔥 ON' : 'OFF';
-      if (Menu.mode === 'normal') {
+      const boostText = boostActive ? `✨ 残り${Math.max(0, boostUntil - elapsed).toFixed(1)}秒` : 'OFF';
+      const common = `スコア: ${score} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
+      if (currentMode === 'normal') {
         const timeLeft = Math.max(0, Math.ceil(GAME_TIME - elapsed));
-        info.textContent = `残り時間: ${formatTime(timeLeft)} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
+        info.textContent = `ステージ${currentStage} | 残り時間: ${formatTime(timeLeft)} | ${common}`;
       } else {
-        info.textContent = `練習モード | 経過時間: ${formatTime(elapsed)} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
+        info.textContent = `練習モード（ステージ${currentStage}） | 経過時間: ${formatTime(elapsed)} | ${common}`;
       }
     }
 
@@ -359,26 +397,202 @@
       });
     }
 
+    // ===== こんぺいとう =====
+    function removeKonpeito() {
+      if (konpeito) {
+        konpeito.el.remove();
+        konpeito = null;
+      }
+    }
+
+    function spawnKonpeito(forcedColor) {
+      removeKonpeito();
+      const color = forcedColor || ((Math.random() < PINK_RATE) ? 'pink' : 'yellow');
+      // プレイヤーから少し離れた場所に出す（出た瞬間にひろってしまわないように）
+      let x;
+      let y;
+      let tries = 0;
+      do {
+        x = 100 + Math.random() * (window.innerWidth - 200);
+        y = 130 + Math.random() * (window.innerHeight - 260);
+        tries++;
+      } while (tries < 20 && Math.hypot(x - (posX + 80), y - (posY + 80)) < 220);
+
+      const el = document.createElement('img');
+      el.src = `konpeito-${color}.svg`;
+      el.className = 'konpeito';
+      el.alt = '';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      document.body.appendChild(el);
+      konpeito = { el: el, x: x, y: y, color: color, born: 0 };
+    }
+
+    function showPop(x, y, text, color) {
+      const el = document.createElement('div');
+      el.className = `pop-text ${color}`;
+      el.textContent = text;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function pickKonpeito(elapsed) {
+      const k = konpeito;
+      removeKonpeito();
+      if (k.color === 'pink') {
+        boostUntil = elapsed + BOOST_DURATION;   // クールタイムなし。ひろうたびに時間をやり直す
+        showPop(k.x, k.y, 'ブースト！', 'pink');
+      } else {
+        score++;
+        showPop(k.x, k.y, '+1', 'yellow');
+      }
+    }
+
+    function updateKonpeito(elapsed) {
+      // 出現
+      if (elapsed >= nextKonpeitoAt) {
+        const forced = (currentMode === 'practice') ? PRACTICE_COLORS[konpeitoSpawnCount] : undefined;
+        spawnKonpeito(forced);
+        konpeito.born = elapsed;
+        konpeitoSpawnCount++;
+        nextKonpeitoAt += KONPEITO_INTERVAL;
+      }
+      if (!konpeito) return;
+
+      // 消える・点滅
+      const age = elapsed - konpeito.born;
+      if (age >= KONPEITO_LIFETIME) {
+        removeKonpeito();
+        return;
+      }
+      if (age > KONPEITO_LIFETIME - 2) konpeito.el.classList.add('blink');
+
+      // ひろう
+      const dist = Math.hypot(posX + 80 - konpeito.x, posY + 80 - konpeito.y);
+      if (dist < PICKUP_RADIUS) pickKonpeito(elapsed);
+    }
+
+    // ===== バケツ（1個ぶんの動き。当たったら true を返す） =====
+    function stepBucket(b) {
+      if (b.state === 'idle') return false;
+
+      if (b.state === 'warning') {
+        // 1. 警告フェーズ：影が大きく・濃くなっていく
+        b.timer++;
+        let progress = b.timer / b.warnFrames;
+
+        b.warningElement.style.display = 'block';
+        b.warningElement.style.left = b.x + 'px';
+        b.warningElement.style.top = b.y + 'px';
+
+        let warningWidth = 30 + progress * 120;
+        let warningHeight = 10 + progress * 50;
+        b.warningElement.style.width = warningWidth + 'px';
+        b.warningElement.style.height = warningHeight + 'px';
+
+        b.warningElement.style.backgroundColor = `rgba(255, 0, 0, ${0.1 + progress * 0.7})`;
+        b.warningElement.style.opacity = 0.2 + progress * 0.8;
+
+        b.element.style.display = 'none';
+
+        if (b.timer >= b.warnFrames) {
+          b.state = 'falling';
+          b.timer = 0;
+          b.warningElement.style.display = 'none';
+          b.element.style.display = 'block';
+        }
+
+      } else if (b.state === 'falling') {
+        // 2. バケツ出現・滞留フェーズ
+        b.timer++;
+
+        let finalSize = 500; // バケツの表示サイズ
+        b.element.style.width = finalSize + 'px';
+        b.element.style.height = finalSize + 'px';
+        b.element.style.left = b.x + 'px';
+        b.element.style.top = b.y + 'px';
+
+        // ★消える直前に少しだけフェードアウト（徐々に薄くなる）効果を演出
+        if (b.timer > 45) {
+          b.element.style.opacity = (60 - b.timer) / 15; // 45〜60フレームの間でじわっと消える
+        } else {
+          b.element.style.opacity = 1.0;
+        }
+
+        // 当たり判定（表示されている間中ずっと有効）
+        let playerCenterX = posX + 30;
+        let playerCenterY = posY + 30;
+        let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
+
+        let bucketRadius = finalSize / 5;
+        let playerRadius = 20;
+
+        if (distance < (bucketRadius + playerRadius)) {
+          return true;
+        }
+
+        // ★表示時間を「60フレーム（約1秒間）」に延ばして残るように修正
+        if (b.timer > 60) {
+          if (b.once) {
+            // すきま専用：1回落ちたら、次の合図まで休む
+            b.state = 'idle';
+            b.warningElement.style.display = 'none';
+            b.element.style.display = 'none';
+            b.element.style.opacity = 1.0;
+          } else {
+            b.state = 'warning';
+            b.timer = 0;
+            b.x = Math.random() * (window.innerWidth - 200) + 100;
+            b.y = Math.random() * (window.innerHeight - 200) + 100;
+          }
+        }
+      }
+      return false;
+    }
+
+    // ステージ2：めいの手の「すきま」に、バケツを落とす合図
+    Hands.setGapBucketHandler((x, y, warnSec) => {
+      const b = reservedBucket();
+      b.once = true;
+      b.warnFrames = Math.max(30, Math.round(warnSec * 60)); // 手が閉じる瞬間に落ちるよう、予告の長さを合わせる
+      b.state = 'warning';
+      b.timer = 0;
+      b.x = x;
+      b.y = y;
+      b.element.style.opacity = 1.0;
+    });
+
     // ゲーム世界を初期状態に戻す
     function resetGameWorld() {
+      const cfg = STAGE_CONFIG[currentStage];
       posX = window.innerWidth / 2;
       posY = window.innerHeight / 2;
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
+      player.classList.remove('boosting');
       currentDirection = 'right';
       animTimer = 0;
       rightFrameIndex = 0;
       leftFrameIndex = 0;
       player.src = 'walk1.png';
 
-      activeBucketCount = (Menu.mode === 'practice') ? PRACTICE_BUCKETS : 3;
+      activeBucketCount = (currentMode === 'practice') ? cfg.practiceBuckets : cfg.buckets.start;
       buckets.forEach((b) => {
         b.state = 'warning';
         b.timer = 0;
+        b.warnFrames = 240;
+        b.once = false;
         b.x = Math.random() * (window.innerWidth - 200) + 100;
         b.y = Math.random() * (window.innerHeight - 200) + 100;
         b.element.style.opacity = 1.0;
       });
+      if (cfg.hands) {
+        // ステージ2：最後のバケツは、手の「すきま」が出るまで休ませる
+        reservedBucket().state = 'idle';
+        reservedBucket().once = true;
+      }
       hideAllBuckets();
     }
 
@@ -386,22 +600,39 @@
     function backToMenu() {
       clearInterval(countdownTimer);
       gameState = 'menu';
+      Tutorial.hide();
+      Hands.stop();
+      removeKonpeito();
       hideAllBuckets();
       resultScreen.style.display = 'none';
       countdownEl.style.display = 'none';
       btnQuitPractice.style.display = 'none';
       info.style.display = 'none';
       player.style.display = 'none';
+      player.classList.remove('boosting');
       Menu.show();
     }
 
     function beginGame() {
       clearInterval(countdownTimer);
+      currentStage = Menu.stage;
+      currentMode = Menu.mode;
+      const cfg = STAGE_CONFIG[currentStage];
+
       Menu.hide();
+      Tutorial.hide();
+      Hands.stop();
+      removeKonpeito();
       resultScreen.style.display = 'none';
       info.style.display = 'block';
       player.style.display = 'block';
-      btnQuitPractice.style.display = (Menu.mode === 'practice') ? 'block' : 'none';
+      btnQuitPractice.style.display = (currentMode === 'practice') ? 'block' : 'none';
+
+      score = 0;
+      boostActive = false;
+      boostUntil = 0;
+      nextKonpeitoAt = 0;      // 最初のこんぺいとうは、ゲーム開始の直後に出る
+      konpeitoSpawnCount = 0;
 
       resetGameWorld();
       updateInfo(0);
@@ -420,6 +651,7 @@
           countdownEl.textContent = 'スタート！';
           gameState = 'playing';
           playStartTime = performance.now();
+          if (cfg.hands) Hands.start();
           setTimeout(() => {
             if (gameState === 'playing') countdownEl.style.display = 'none';
           }, 700);
@@ -431,30 +663,36 @@
     function endGame(cleared) {
       gameState = 'result';
       const elapsed = (performance.now() - playStartTime) / 1000;
+      const scoreLine = `こんぺいとうスコア: ${score}こ`;
 
-      if (Menu.mode === 'normal') {
+      if (currentMode === 'normal') {
         const survived = Math.min(elapsed, GAME_TIME);
-        const isNewBest = Menu.recordSurvival(survived);
+        const newBestTime = Menu.recordSurvival(survived);
+        const newBestScore = Menu.recordScore(score);
 
         resultTitle.textContent = cleared ? 'めいから逃げ切った！' : 'めいに捕まった。。。';
         resultSub.textContent =
           (cleared ? `クリアタイム: ${GAME_TIME.toFixed(1)}秒` : `生き残った時間: ${survived.toFixed(1)}秒`) +
-          (isNewBest ? '\n🎉 ベスト記録を更新！' : '');
+          `\n${scoreLine}` +
+          ((newBestTime || newBestScore) ? '\n🎉 ベスト記録を更新！' : '');
         btnRetry.textContent = 'もう一度';
         btnMenu.textContent = '待機画面に戻る';
       } else {
         practiceHitCount++;
         if (practiceHitCount === 1) {
           // 1回目：チュートリアル説明
-          resultTitle.textContent = 'バケツに当たった！';
+          resultTitle.textContent = '当たっちゃった！';
           resultSub.textContent =
-            'バケツに当たるとゲームオーバーになります。\n' +
-            '赤い影が大きくなったら、その場所から離れましょう。\n' +
+            'バケツやめいの手に当たると、\n' +
+            'ゲームオーバーになります。\n' +
+            '赤い影や赤い帯が出たら、\n' +
+            'その場所から離れましょう。\n' +
+            `${scoreLine}\n` +
             'もう一度挑戦してみよう！';
         } else {
           // 2回目以降：ゲームオーバー表示（避ける操作の練習）
           resultTitle.textContent = 'ゲームオーバー';
-          resultSub.textContent = `練習時間: ${elapsed.toFixed(1)}秒\n避ける操作を練習しよう！`;
+          resultSub.textContent = `練習時間: ${elapsed.toFixed(1)}秒\n${scoreLine}\n避ける操作を練習しよう！`;
         }
         btnRetry.textContent = 'もう一度挑戦';
         btnMenu.textContent = '練習を終了';
@@ -473,18 +711,27 @@
 
     function update() {
       requestAnimationFrame(update);
+      const nowT = performance.now();
+      const dt = Math.min(0.05, (nowT - lastFrameTime) / 1000);
+      lastFrameTime = nowT;
       if (gameState !== 'playing') return;
 
-      const elapsed = (performance.now() - playStartTime) / 1000;
+      const elapsed = (nowT - playStartTime) / 1000;
+      const cfg = STAGE_CONFIG[currentStage];
 
-      if (Menu.mode === 'normal') {
+      if (currentMode === 'normal') {
         if (elapsed >= GAME_TIME) {
           endGame(true);
           return;
         }
-        // 10秒ごとにバケツ数が増える（3 → 9 → 15）
-        activeBucketCount = Math.min(maxBuckets, 3 + 6 * Math.floor(elapsed / 10));
+        // バケツ数は、every 秒ごとに add ずつ増える（ステージ1は 3 → 9 → 15）
+        const bc = cfg.buckets;
+        activeBucketCount = Math.min(bc.max, bc.start + bc.add * Math.floor(elapsed / bc.every));
       }
+
+      // ブースト（ピンクのこんぺいとうをひろうと、BOOST_DURATION 秒だけ自動で入る）
+      boostActive = elapsed < boostUntil;
+      player.classList.toggle('boosting', boostActive);
 
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
@@ -494,10 +741,10 @@
       let prevX = posX;
       let prevY = posY;
 
-      // --- 1. スピード・操作感の補正設定（ここでブースト倍率も調整できます） ---
+      // --- 1. スピード・操作感の補正設定 ---
       const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
       const baseSpeed = 0.005;      // 通常時の移動スピード
-      const boostMultiplier = 2.0; // ★ブースト時のスピード倍率（ここで調整！）
+      const boostMultiplier = BOOST_MULTIPLIER; // ★ブースト時のスピード倍率（上の調整用の設定で変える）
 
       // 2. 傾きの取得と持ち手の角度調整
       let rawX = inputX;
@@ -528,73 +775,27 @@
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
 
+      // --- こんぺいとうの出現・ひろう処理 ---
+      updateKonpeito(elapsed);
+
       // --- 影の拡大とバケツの出現処理 ---
       for (let i = 0; i < activeBucketCount; i++) {
-        let b = buckets[i];
+        if (stepBucket(buckets[i])) {
+          endGame(false);
+          return;
+        }
+      }
+      // ステージ2：めいの手の「すきま」専用バケツ
+      if (cfg.hands && stepBucket(reservedBucket())) {
+        endGame(false);
+        return;
+      }
 
-        if (b.state === 'warning') {
-          // 1. 警告フェーズ：影が大きく・濃くなっていく
-          b.timer++;
-          let progress = b.timer / 240; // 約1.5秒間
-
-          b.warningElement.style.display = 'block';
-          b.warningElement.style.left = b.x + 'px';
-          b.warningElement.style.top = b.y + 'px';
-
-          let warningWidth = 30 + progress * 120;
-          let warningHeight = 10 + progress * 50;
-          b.warningElement.style.width = warningWidth + 'px';
-          b.warningElement.style.height = warningHeight + 'px';
-
-          b.warningElement.style.backgroundColor = `rgba(255, 0, 0, ${0.1 + progress * 0.7})`;
-          b.warningElement.style.opacity = 0.2 + progress * 0.8;
-
-          b.element.style.display = 'none';
-
-          if (b.timer >= 240) {
-            b.state = 'falling';
-            b.timer = 0;
-            b.warningElement.style.display = 'none';
-            b.element.style.display = 'block';
-          }
-
-        } else if (b.state === 'falling') {
-          // 2. バケツ出現・滞留フェーズ
-          b.timer++;
-
-          let finalSize = 500; // バケツの表示サイズ
-          b.element.style.width = finalSize + 'px';
-          b.element.style.height = finalSize + 'px';
-          b.element.style.left = b.x + 'px';
-          b.element.style.top = b.y + 'px';
-
-          // ★消える直前に少しだけフェードアウト（徐々に薄くなる）効果を演出
-          if (b.timer > 45) {
-            b.element.style.opacity = (60 - b.timer) / 15; // 45〜60フレームの間でじわっと消える
-          } else {
-            b.element.style.opacity = 1.0;
-          }
-
-          // 当たり判定（表示されている間中ずっと有効）
-          let playerCenterX = posX + 30;
-          let playerCenterY = posY + 30;
-          let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
-
-          let bucketRadius = finalSize / 5;
-          let playerRadius = 20;
-
-          if (distance < (bucketRadius + playerRadius)) {
-            endGame(false);
-            return;
-          }
-
-          // ★表示時間を「60フレーム（約1秒間）」に延ばして残るように修正
-          if (b.timer > 60) {
-            b.state = 'warning';
-            b.timer = 0;
-            b.x = Math.random() * (window.innerWidth - 200) + 100;
-            b.y = Math.random() * (window.innerHeight - 200) + 100;
-          }
+      // --- ステージ2：めいの両手 ---
+      if (cfg.hands) {
+        if (Hands.update(dt, window.innerWidth, window.innerHeight, posX + 80, posY + 80, PLAYER_HIT_R)) {
+          endGame(false);
+          return;
         }
       }
 
@@ -628,13 +829,25 @@
       }
     }
 
-    // 待機画面を初期化して開始（スタートボタンが押されたら beginGame）
+    // 待機画面を初期化して開始（スタートボタンが押されたら、練習なら説明 → ゲーム開始）
     Menu.init({
       gameTime: GAME_TIME,
-      onStart: () => {
+      onStart: ({ mode, stage }) => {
         if (gameState !== 'menu') return;
         practiceHitCount = 0; // 練習モードを始めるたびにチュートリアルを最初から
-        beginGame();
+        if (mode === 'practice') {
+          gameState = 'tutorial';
+          Menu.hide();
+          Tutorial.show({
+            stage: stage,
+            boostSec: BOOST_DURATION,
+            interval: KONPEITO_INTERVAL,
+            onDone: beginGame,
+            onBack: backToMenu
+          });
+        } else {
+          beginGame();
+        }
       }
     });
     Menu.show();
