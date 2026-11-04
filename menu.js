@@ -8,6 +8,7 @@
 //   Menu.notifyInput()                コントローラーから入力が届いたときに呼ぶ
 //   Menu.setConnected(bool)           Firebase の接続状態を伝える
 //   Menu.recordSurvival(sec)          通常モードの生存時間を記録する。ベスト更新なら true を返す
+//   Menu.recordScore(n)               通常モードのこんぺいとうの数を記録する。ベスト更新なら true を返す
 //
 // Firebase には触らないので、通信まわりは game.html 側だけで完結します。
 
@@ -50,21 +51,56 @@ const Menu = (() => {
     }
   }
 
+  // ----- ベストスコア（こんぺいとうの数・ステージごとに保存） -----
+  function scoreKey() {
+    return `makkuro_bestscore_stage${stage}`;
+  }
+
+  function loadBestScore() {
+    try {
+      const v = localStorage.getItem(scoreKey());
+      return v === null ? null : parseInt(v, 10);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveBestScore(n) {
+    try {
+      localStorage.setItem(scoreKey(), String(n));
+    } catch (e) {
+      // 保存できない環境では何もしない
+    }
+  }
+
   function showBest() {
     const best = loadBest();
-    if (best === null || isNaN(best)) {
+    const bestScore = loadBestScore();
+    if ((best === null || isNaN(best)) && (bestScore === null || isNaN(bestScore))) {
       bestEl.textContent = 'ベスト記録（通常モード）: まだ記録がありません';
-    } else if (best >= gameTime) {
-      bestEl.textContent = `ベスト記録（通常モード）: ${gameTime.toFixed(1)}秒（クリア！）`;
-    } else {
-      bestEl.textContent = `ベスト記録（通常モード）: ${best.toFixed(1)}秒`;
+      return;
     }
+    let timeText = '—';
+    if (best !== null && !isNaN(best)) {
+      timeText = (best >= gameTime) ? `${gameTime.toFixed(1)}秒（クリア！）` : `${best.toFixed(1)}秒`;
+    }
+    const scoreText = (bestScore === null || isNaN(bestScore)) ? 0 : bestScore;
+    bestEl.textContent = `ベスト記録（通常モード）: ${timeText} ／ こんぺいとう ${scoreText}こ`;
   }
 
   function recordSurvival(sec) {
     const best = loadBest();
     const isNewBest = (best === null || isNaN(best) || sec > best);
     if (isNewBest) saveBest(sec);
+    return isNewBest;
+  }
+
+  // こんぺいとうの数を記録する。ベスト更新（1こ以上）なら true を返す
+  function recordScore(n) {
+    if (n <= 0) return false;
+    const best = loadBestScore();
+    const isNewBest = (best === null || isNaN(best) || n > best);
+    if (isNewBest) saveBestScore(n);
     return isNewBest;
   }
 
@@ -136,6 +172,7 @@ const Menu = (() => {
     notifyInput,
     setConnected,
     recordSurvival,
+    recordScore,
     get mode() { return mode; },
     get stage() { return stage; }
   };
