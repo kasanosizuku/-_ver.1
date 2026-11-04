@@ -23,33 +23,16 @@
       cursor: pointer;
       margin: 10px;
     }
-    /* ブーストボタン（通常・アクティブ・クールダウン中） */
-    #boost-btn {
-      background-color: #ff9800;
-      font-size: 24px;
-      padding: 20px 40px;
-      transition: background-color 0.2s;
-    }
-    #boost-btn.active {
-      background-color: #e65100;
-      transform: scale(0.95);
-    }
-    #boost-btn:disabled {
-      background-color: #555;
-      color: #888;
-      cursor: not-allowed;
-      transform: none;
-    }
     #status {
       margin-top: 15px;
       font-size: 16px;
       color: #00e676;
     }
-    #cooldown-info {
-      margin-top: 10px;
-      font-size: 18px;
-      font-weight: bold;
-      color: #ffeb3b;
+    #hint {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #aaa;
+      line-height: 1.7;
     }
   </style>
 </head>
@@ -57,11 +40,9 @@
 
   <h1>君のまっくろくろすけ</h1>
   <button id="start-btn">ゲームスタート！</button>
-  <br>
-  <!-- ブーストボタン ＆ クールタイム表示 -->
-  <button id="boost-btn">わっ！</button>
-  <div id="cooldown-info"></div>
   <div id="status">未接続</div>
+  <!-- ブーストは、ゲーム画面でこんぺいとう（ピンク）をひろうと自動で入ります -->
+  <div id="hint">スマホを傾けて動かします。<br>ピンクのこんぺいとうをひろうと、自動でブーストします。</div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -82,18 +63,10 @@
     const database = firebase.database();
 
     const startBtn = document.getElementById('start-btn');
-    const boostBtn = document.getElementById('boost-btn');
     const statusDiv = document.getElementById('status');
-    const cooldownInfo = document.getElementById('cooldown-info');
 
     let currentGamma = 0;
     let currentBeta = 0;
-    let isBoosting = false;
-
-    // クールタイム・ブースト管理用タイマー変数
-    let boostTimer = null;
-    let cooldownTimer = null;
-    let remainingCooldown = 0;
 
     async function startSensor() {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -120,65 +93,15 @@
       sendData();
     }
 
+    // 傾きだけを送る（ブーストの情報は、もう送らない）
     function sendData() {
       database.ref('player1/move').set({
         x: currentGamma,
-        y: currentBeta,
-        boost: isBoosting
+        y: currentBeta
       });
     }
 
     startBtn.addEventListener('click', startSensor);
-
-    // ブーストボタンが押されたときの処理
-    boostBtn.addEventListener('click', () => {
-      // すでにブースト中、またはクールダウン中なら無視
-      if (isBoosting || remainingCooldown > 0) return;
-
-      // --- ① ブースト発動（5秒間） ---
-      isBoosting = true;
-      boostBtn.classList.add('active');
-      boostBtn.textContent = "ブースト中！ (5s)";
-      sendData();
-
-      let boostLeft = 5;
-      boostTimer = setInterval(() => {
-        boostLeft--;
-        if (boostLeft > 0) {
-          boostBtn.textContent = `ブースト中！ (${boostLeft}s)`;
-        } else {
-          clearInterval(boostTimer);
-          // --- ② ブースト終了 → クールタイム開始（15秒） ---
-          isBoosting = false;
-          boostBtn.classList.remove('active');
-          sendData();
-
-          startCooldown(15);
-        }
-      }, 1000);
-    });
-
-    // クールタイムを管理・表示する関数
-    function startCooldown(seconds) {
-      remainingCooldown = seconds;
-      boostBtn.disabled = true;
-      boostBtn.textContent = `クールタイム中`;
-      cooldownInfo.textContent = `残りクールタイム: ${remainingCooldown}秒`;
-
-      cooldownTimer = setInterval(() => {
-        remainingCooldown--;
-        if (remainingCooldown > 0) {
-          cooldownInfo.textContent = `残りクールタイム: ${remainingCooldown}秒`;
-        } else {
-          clearInterval(cooldownTimer);
-          remainingCooldown = 0;
-          boostBtn.disabled = false;
-          boostBtn.textContent = "ブースト！";
-          cooldownInfo.textContent = "ブースト準備完了！";
-          setTimeout(() => { cooldownInfo.textContent = ""; }, 2000);
-        }
-      }, 1000);
-    }
   </script>
 </body>
 </html>
