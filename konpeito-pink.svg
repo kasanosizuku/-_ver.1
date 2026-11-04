@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+<defs><radialGradient id="g" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffe0e3"/><stop offset="0.55" stop-color="#f6a5b0"/><stop offset="1" stop-color="#e8808f"/></radialGradient></defs>
+<path d="M33.9 5.8 Q40.0 -3.0 46.2 5.7 Q52.3 14.4 63.5 13.4 Q74.6 12.4 71.3 23.0 Q68.0 33.6 75.4 41.7 Q82.8 49.8 72.4 53.6 Q62.0 57.5 60.5 68.5 Q59.0 79.5 49.5 74.3 Q40.0 69.0 30.7 73.9 Q21.3 78.7 19.6 68.2 Q17.8 57.7 7.3 53.8 Q-3.2 49.9 4.4 41.7 Q12.0 33.6 8.9 23.1 Q5.7 12.7 16.8 13.7 Q27.8 14.7 33.9 5.8 Z" fill="url(#g)" stroke="#a8525f" stroke-width="2.4" stroke-linejoin="round"/>
+<g fill="#ffe0e3" opacity="0.65"><circle cx="30" cy="34" r="4.6"/><circle cx="47" cy="29" r="3.4"/><circle cx="41" cy="47" r="5"/><circle cx="27" cy="51" r="3.4"/><circle cx="54" cy="46" r="3.8"/></g>
+<g fill="#c9606e" opacity="0.55"><circle cx="35" cy="42" r="1.6"/><circle cx="48" cy="38" r="1.5"/><circle cx="33" cy="54" r="1.4"/><circle cx="50" cy="55" r="1.5"/></g>
+<ellipse cx="29" cy="24" rx="7" ry="3.4" fill="#ffffff" opacity="0.5" transform="rotate(-28 29 24)"/>
+</svg>
