@@ -1,5 +1,16 @@
 /* ===== 待機画面（メニュー）のスタイル =====
-   マークアップは game.html の #menu、動作は menu.js が担当します。 */
+   マークアップは game.html の #menu、動作は menu.js が担当します。
+   どんぐりや葉っぱの絵は、このファイルの中に書いたオリジナルの SVG です。
+   （既存の作品のキャラクターやロゴは使っていません） */
+
+:root {
+  /* 飾りの絵（SVG をそのまま埋め込んでいるので、画像ファイルは不要）
+     待機画面と、game.html の結果画面で共用する */
+  --acorn-a: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='80' viewBox='0 0 64 80'%3E%3Cpath d='M32 10 Q33 3 39 2' stroke='%235a3e22' stroke-width='3.5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M9 41 Q8 62 32 78 Q56 62 55 41 Z' fill='%23c49a62'/%3E%3Cellipse cx='21' cy='57' rx='3.5' ry='9' fill='%23e6c995' opacity='0.75' transform='rotate(14 21 57)'/%3E%3Cpath d='M5 36 Q4 14 32 9 Q60 14 59 36 Z' fill='%237b5a34'/%3E%3Cg fill='%235c4125'%3E%3Ccircle cx='23' cy='19' r='2.2'/%3E%3Ccircle cx='41' cy='19' r='2.2'/%3E%3Ccircle cx='16' cy='26' r='2.2'/%3E%3Ccircle cx='32' cy='25' r='2.2'/%3E%3Ccircle cx='48' cy='26' r='2.2'/%3E%3Ccircle cx='23' cy='31' r='2.2'/%3E%3Ccircle cx='41' cy='31' r='2.2'/%3E%3C/g%3E%3Crect x='3' y='34' width='58' height='8' rx='4' fill='%235c4125'/%3E%3C/svg%3E");
+  --acorn-b: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='96' viewBox='-12 -8 88 96'%3E%3Cg transform='rotate(-28 32 40)'%3E%3Cpath d='M32 10 Q33 3 39 2' stroke='%235a3e22' stroke-width='3.5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M9 41 Q8 62 32 78 Q56 62 55 41 Z' fill='%23c49a62'/%3E%3Cellipse cx='21' cy='57' rx='3.5' ry='9' fill='%23e6c995' opacity='0.75' transform='rotate(14 21 57)'/%3E%3Cpath d='M5 36 Q4 14 32 9 Q60 14 59 36 Z' fill='%237b5a34'/%3E%3Cg fill='%235c4125'%3E%3Ccircle cx='23' cy='19' r='2.2'/%3E%3Ccircle cx='41' cy='19' r='2.2'/%3E%3Ccircle cx='16' cy='26' r='2.2'/%3E%3Ccircle cx='32' cy='25' r='2.2'/%3E%3Ccircle cx='48' cy='26' r='2.2'/%3E%3Ccircle cx='23' cy='31' r='2.2'/%3E%3Ccircle cx='41' cy='31' r='2.2'/%3E%3C/g%3E%3Crect x='3' y='34' width='58' height='8' rx='4' fill='%235c4125'/%3E%3C/g%3E%3C/svg%3E");
+  --leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='72' viewBox='0 0 48 72'%3E%3Cpath d='M24 3 C44 16 46 48 24 69 C2 48 4 16 24 3 Z' fill='%238fb573'/%3E%3Cpath d='M24 10 L24 66 M24 24 L14 16 M24 34 L12 26 M24 44 L13 37 M24 24 L34 16 M24 34 L36 26 M24 44 L35 37' stroke='%235f8a4b' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+
+}
 
 #menu {
   position: fixed;
@@ -7,68 +18,165 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  /* 森の中のような、やわらかい緑のもや */
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255, 244, 200, 0.28), rgba(255, 244, 200, 0) 60%),
+    linear-gradient(rgba(34, 66, 44, 0.72), rgba(22, 48, 32, 0.84));
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 200;
+  font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', 'Yu Gothic', 'Meiryo', sans-serif;
 }
 
+/* 画面のまわりに散らばるどんぐりと葉っぱ */
+#menu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-image: var(--acorn-a), var(--acorn-b), var(--leaf), var(--acorn-b), var(--acorn-a), var(--leaf), var(--acorn-a);
+  background-repeat: no-repeat;
+  background-position: 6% 12%, 92% 16%, 14% 84%, 88% 80%, 52% 3%, 80% 50%, 3% 48%;
+  background-size: 64px auto, 76px auto, 56px auto, 66px auto, 46px auto, 50px auto, 54px auto;
+  opacity: 0.92;
+  animation: menu-float 7s ease-in-out infinite;
+}
+
+@keyframes menu-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #menu::before { animation: none; }
+}
+
+/* 紙のようなパネル（ふちに縫い目のような線） */
 #menu .panel {
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 16px;
-  padding: 24px 36px;
+  position: relative;
+  z-index: 1;
+  background: #fbf5e3;
+  border: 4px solid #8a6a43;
+  border-radius: 28px;
+  box-shadow:
+    0 12px 32px rgba(10, 30, 18, 0.5),
+    inset 0 0 0 7px #fbf5e3,
+    inset 0 0 0 9px #d9ccA6;
+  padding: 26px 38px;
   width: 560px;
   max-width: 90vw;
   max-height: 92vh;
   overflow-y: auto;
   text-align: center;
-  color: #333;
+  color: #4a4130;
   box-sizing: border-box;
 }
 
-#menu h1 { margin: 0; font-size: 30px; }
-#menu .subtitle { margin: 4px 0 16px; color: #666; font-size: 16px; }
+#menu h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  color: #3f6b3a;
+}
+#menu h1::before,
+#menu h1::after {
+  content: '';
+  display: inline-block;
+  width: 26px;
+  height: 32px;
+  background: var(--acorn-a) center / contain no-repeat;
+  vertical-align: -6px;
+  margin: 0 10px;
+}
+#menu h1::after { background-image: var(--acorn-b); }
+
+#menu .subtitle { margin: 4px 0 16px; color: #7d8f5c; font-size: 16px; }
 
 .section { margin-bottom: 14px; }
-.section-title { font-size: 14px; font-weight: bold; color: #888; margin-bottom: 6px; }
-.btn-row { display: flex; gap: 10px; justify-content: center; }
+.section-title { font-size: 14px; font-weight: bold; color: #8a7a52; margin-bottom: 8px; }
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 13px;
+  height: 18px;
+  background: var(--leaf) center / contain no-repeat;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+.btn-row { display: flex; gap: 12px; justify-content: center; }
 
 /* モード・ステージの選択ボタン */
 .choice {
+  position: relative;
   flex: 1;
-  border: 3px solid #ccc;
-  border-radius: 10px;
-  background: #f5f5f5;
+  border: 3px solid #d6c8a0;
+  border-radius: 16px;
+  background: #fffaf0;
   padding: 10px 8px;
   font-size: 18px;
   font-weight: bold;
-  color: #555;
+  color: #6b5a3a;
+  transition: border-color 0.15s, background 0.15s;
 }
 .choice small { display: block; font-size: 12px; font-weight: normal; margin-top: 2px; }
-.choice.selected { border-color: #e8590c; background: #fff0e6; color: #d9480f; }
+.choice:hover:not(:disabled) { border-color: #a7c957; }
+.choice.selected { border-color: #6a994e; background: #e8f3d6; color: #386641; }
+/* 選ばれているボタンには、小さなどんぐりが付く */
+.choice.selected::after {
+  content: '';
+  position: absolute;
+  top: -14px;
+  right: -8px;
+  width: 26px;
+  height: 32px;
+  background: var(--acorn-b) center / contain no-repeat;
+}
 .choice:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* 遊び方の説明 */
 .howto {
   text-align: left;
-  background: #f1f3f5;
-  border-radius: 10px;
+  background: #f3edd5;
+  border-left: 6px solid #8fb573;
+  border-radius: 12px;
   padding: 10px 16px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   margin-bottom: 12px;
 }
-.howto b { color: #d9480f; }
+.howto b { color: #8c4a32; }
 
 /* コントローラーの受信状況 */
 #controller-status { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
-#controller-status.ok { color: #2b8a3e; }
-#controller-status.wait { color: #e67700; }
-#controller-status.ng { color: #c92a2a; }
+#controller-status.ok { color: #386641; }
+#controller-status.wait { color: #9a7b1a; }
+#controller-status.ng { color: #a4483a; }
 
 /* ベスト記録 */
-#best-record { font-size: 15px; color: #555; margin-bottom: 14px; }
+#best-record { font-size: 15px; color: #7a6f4f; margin-bottom: 16px; }
+#best-record::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 20px;
+  background: var(--acorn-a) center / contain no-repeat;
+  margin-right: 6px;
+  vertical-align: -4px;
+}
 
-/* ゲームスタートボタン（.main-btn の見た目は game.html 側で共通定義） */
-#btn-start { width: 100%; font-size: 26px; padding: 14px; }
+/* ゲームスタートボタン（.main-btn の共通設定は game.html 側。色はここで上書き） */
+#btn-start {
+  width: 100%;
+  font-size: 26px;
+  padding: 14px;
+  letter-spacing: 0.1em;
+  border-radius: 18px;
+  background: #5b8c3a;
+  box-shadow: 0 5px 0 #3f6b2a;
+}
+#btn-start:hover { background: #68a044; }
+#btn-start:active { transform: translateY(3px); box-shadow: 0 2px 0 #3f6b2a; }

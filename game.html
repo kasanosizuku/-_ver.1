@@ -80,25 +80,26 @@
     }
     .main-btn {
       border: none;
-      border-radius: 10px;
+      border-radius: 16px;
       padding: 12px 28px;
       font-size: 20px;
       font-weight: bold;
       color: white;
-      background: #e8590c;
+      background: #5b8c3a;
+      box-shadow: 0 4px 0 #3f6b2a;
       transition: transform 0.1s, background 0.2s;
     }
-    .main-btn:hover { background: #d9480f; transform: scale(1.03); }
+    .main-btn:hover { background: #68a044; transform: scale(1.03); }
     .sub-btn {
-      border: 2px solid #ccc;
-      border-radius: 10px;
+      border: 2px solid #b9a77a;
+      border-radius: 16px;
       padding: 10px 24px;
       font-size: 18px;
       font-weight: bold;
-      color: #eee;
+      color: #6b5a3a;
       background: transparent;
     }
-    .sub-btn:hover { background: rgba(255, 255, 255, 0.15); }
+    .sub-btn:hover { background: #efe6c8; }
 
     /* ===== カウントダウン ===== */
     #countdown {
@@ -127,10 +128,10 @@
       font-size: 18px;
       font-weight: bold;
       color: white;
-      background: rgba(201, 42, 42, 0.9);
+      background: rgba(138, 106, 67, 0.92);
       display: none;
     }
-    #btn-quit-practice:hover { background: #c92a2a; }
+    #btn-quit-practice:hover { background: #6e5232; }
 
     /* ===== 結果画面 ===== */
     #result-screen {
@@ -138,20 +139,36 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.85);
-      color: white;
+      background: #fbf5e3;
+      color: #4a4130;
+      border: 4px solid #8a6a43;
+      box-shadow:
+        0 12px 32px rgba(10, 30, 18, 0.5),
+        inset 0 0 0 7px #fbf5e3,
+        inset 0 0 0 9px #d9cca6;
+      font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', 'Yu Gothic', 'Meiryo', sans-serif;
       padding: 30px 50px;
-      border-radius: 15px;
+      border-radius: 28px;
       display: none;
       text-align: center;
       z-index: 100;
       max-width: 80vw;
     }
-    #result-title { font-size: 32px; font-weight: bold; }
+    #result-title { font-size: 32px; font-weight: bold; color: #3f6b3a; }
+    /* 待機画面と同じどんぐり（絵の定義は menu.css） */
+    #result-title::before {
+      content: '';
+      display: inline-block;
+      width: 30px;
+      height: 38px;
+      background: var(--acorn-a) center / contain no-repeat;
+      vertical-align: -8px;
+      margin-right: 10px;
+    }
     #result-sub {
       font-size: 18px;
       font-weight: normal;
-      color: #ddd;
+      color: #6b5a3a;
       margin: 14px 0 0;
       line-height: 1.7;
       white-space: pre-line;
