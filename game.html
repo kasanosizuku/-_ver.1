@@ -3,15 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <title>君のまっくろくろすけ - 飛び出すバケツ避けサバイバル</title>
+  <!-- 待機画面のスタイルは menu.css に分離 -->
+  <link rel="stylesheet" href="menu.css">
   <style>
     body {
       margin: 0;
       overflow: hidden;
-      /* background-color: #87CEEB; ← 削除またはコメントアウト */
-      background-image: url('background.jpg'); /* ★使いたい画像ファイル名 */
-      background-size: cover;      /* 画面全体に隙間なく敷き詰める */
-      background-position: center　center; /* 画像の中央を基準にする */
-      background-repeat: no-repeat;/* 繰り返し表示しない */
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
       font-family: sans-serif;
     }
     #info {
@@ -25,6 +26,7 @@
       font-weight: bold;
       color: #333;
       z-index: 10;
+      display: none;
     }
     /* まっくろくろすけ（160px） */
     #player {
@@ -33,6 +35,7 @@
       height: 160px;
       object-fit: contain;
       z-index: 5;
+      display: none;
     }
     /* バケツ落下前の警告マーカー */
     .warning-sign {
@@ -64,6 +67,67 @@
       opacity: 0.4;
       transition: opacity 0.25s ease-out;
     }
+
+    /* ===== 共通ボタン（待機画面と結果画面で共用） ===== */
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .main-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 20px;
+      font-weight: bold;
+      color: white;
+      background: #e8590c;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .main-btn:hover { background: #d9480f; transform: scale(1.03); }
+    .sub-btn {
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #eee;
+      background: transparent;
+    }
+    .sub-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+    /* ===== カウントダウン ===== */
+    #countdown {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 140px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 0 12px rgba(0, 0, 0, 0.8), 0 0 4px black;
+      z-index: 150;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* ===== 練習モード終了ボタン ===== */
+    #btn-quit-practice {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 20;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background: rgba(201, 42, 42, 0.9);
+      display: none;
+    }
+    #btn-quit-practice:hover { background: #c92a2a; }
+
+    /* ===== 結果画面 ===== */
     #result-screen {
       position: absolute;
       top: 50%;
@@ -73,28 +137,84 @@
       color: white;
       padding: 30px 50px;
       border-radius: 15px;
-      font-size: 32px;
-      font-weight: bold;
       display: none;
       text-align: center;
       z-index: 100;
+      max-width: 80vw;
     }
+    #result-title { font-size: 32px; font-weight: bold; }
+    #result-sub {
+      font-size: 18px;
+      font-weight: normal;
+      color: #ddd;
+      margin: 14px 0 0;
+      line-height: 1.7;
+      white-space: pre-line;
+    }
+    #result-buttons { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
   </style>
 </head>
 
 <body>
 
   <div id="info">残り時間: 0:30 | バケツ数: 3 | ブースト: OFF</div>
+  <button id="btn-quit-practice">練習を終了</button>
   <img id="player" src="walk1.png" alt="まっくろくろすけ">
-  
+
+  <div id="countdown"></div>
+
+  <!-- 待機画面（見た目は menu.css、動作は menu.js） -->
+  <div id="menu">
+    <div class="panel">
+      <h1>君のまっくろくろすけ</h1>
+      <p class="subtitle">飛び出すバケツ避けサバイバル</p>
+
+      <div class="section">
+        <div class="section-title">モード</div>
+        <div class="btn-row">
+          <button class="choice selected" data-mode="normal">通常モード<small>30秒間、逃げ切れ！</small></button>
+          <button class="choice" data-mode="practice">練習モード<small>時間無制限・バケツ数固定</small></button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">ステージ</div>
+        <div class="btn-row">
+          <button class="choice selected" data-stage="1">ステージ1</button>
+          <button class="choice" disabled>ステージ2<small>準備中</small></button>
+        </div>
+      </div>
+
+      <div class="howto">
+        <b>遊び方</b><br>
+        ・スマホを傾けると、その方向に進み続けます。<br>
+        ・ブーストをONにすると、スピードが2倍になります。<br>
+        ・<b>赤い影</b>が大きくなったら、バケツが出る合図！ その場所から離れよう。<br>
+        ・バケツに当たるとゲームオーバー。30秒逃げ切ればクリアです。
+      </div>
+
+      <div id="controller-status" class="wait">コントローラー: 確認中...</div>
+      <div id="best-record"></div>
+
+      <button id="btn-start" class="main-btn">ゲームスタート</button>
+    </div>
+  </div>
+
   <div id="result-screen">
-    <span id="result-text">めいに捕まった。。。</span><br>
-    <span style="font-size: 18px; font-weight: normal; color: #ddd;"></span>
+    <div id="result-title">めいに捕まった。。。</div>
+    <div id="result-sub"></div>
+    <div id="result-buttons">
+      <button id="btn-retry" class="main-btn">もう一度</button>
+      <button id="btn-menu" class="sub-btn">待機画面に戻る</button>
+    </div>
   </div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- 待機画面の制御（Menu オブジェクトを定義する） -->
+  <script src="menu.js"></script>
 
   <script>
     const firebaseConfig = {
@@ -111,20 +231,33 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // ===== 調整用の設定 =====
+    const GAME_TIME = 30;            // 通常モードの制限時間（秒）
+    const PRACTICE_BUCKETS = 6;      // 練習モードのバケツ数（最初から固定）
+    const COUNTDOWN_SECONDS = 3;     // スタート前のカウントダウン（秒）
+
     const player = document.getElementById('player');
     const info = document.getElementById('info');
     const resultScreen = document.getElementById('result-screen');
-    const resultText = document.getElementById('result-text');
+    const resultTitle = document.getElementById('result-title');
+    const resultSub = document.getElementById('result-sub');
+    const btnRetry = document.getElementById('btn-retry');
+    const btnMenu = document.getElementById('btn-menu');
+    const btnQuitPractice = document.getElementById('btn-quit-practice');
+    const countdownEl = document.getElementById('countdown');
 
     let posX = window.innerWidth / 2;
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
     let boostActive = false;
-    let isGameOver = false;
 
-    let timeLeft = 30; // 制限時間30秒
-    let timerCounter = 0;
+    // 画面の状態: 'menu'（待機）/ 'countdown' / 'playing' / 'result'
+    // 選択中のモードは Menu.mode（'normal' または 'practice'）で取得する
+    let gameState = 'menu';
+    let playStartTime = 0;
+    let countdownTimer = null;
+    let practiceHitCount = 0;        // 練習モードで当たった回数（練習開始ごとにリセット）
 
     let animTimer = 0;
     let rightFrameIndex = 0;
@@ -137,15 +270,15 @@
     let activeBucketCount = 3;
 
     for (let i = 0; i < maxBuckets; i ++) {
-    const warningEl = document.createElement('div');
-    warningEl.className = 'warning-sign';
-    document.body.appendChild(warningEl);
-　　　
+      const warningEl = document.createElement('div');
+      warningEl.className = 'warning-sign';
+      document.body.appendChild(warningEl);
+
       const img = document.createElement('img');
       img.src = 'bucket.png';
       img.className = 'bucket';
       document.body.appendChild(img);
-      
+
       buckets.push({
         warningElement: warningEl,
         element: img,
@@ -159,44 +292,187 @@
       });
     }
 
+    // ===== Firebase：コントローラー入力 =====
+    let firstSnapshot = true;
+
     database.ref('player1/move').on('value', (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        inputX = data.x; 
-        inputY = data.y; 
+        inputX = data.x;
+        inputY = data.y;
         boostActive = data.boost || false;
+      }
+      // 最初のスナップショットは保存済みの値なので、受信とは数えない
+      if (firstSnapshot) {
+        firstSnapshot = false;
+      } else {
+        Menu.notifyInput();
       }
     });
 
-    setInterval(() => {
-      if (isGameOver) return;
+    database.ref('.info/connected').on('value', (snapshot) => {
+      Menu.setConnected(snapshot.val() === true);
+    });
 
-      timeLeft--;
-      timerCounter++;
+    // ===== 表示まわり =====
+    function formatTime(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    }
 
-      if (timerCounter % 10 === 0 && activeBucketCount < maxBuckets) {
-        activeBucketCount += 6;
+    function updateInfo(elapsed) {
+      const boostText = boostActive ? '🔥 ON' : 'OFF';
+      if (Menu.mode === 'normal') {
+        const timeLeft = Math.max(0, Math.ceil(GAME_TIME - elapsed));
+        info.textContent = `残り時間: ${formatTime(timeLeft)} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
+      } else {
+        info.textContent = `練習モード | 経過時間: ${formatTime(elapsed)} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
       }
+    }
 
-      if (timeLeft <= 0) {
-        isGameOver = true;
-        resultText.innerHTML = "めいから逃げ切った！";
-        resultScreen.style.display = 'block';
+    function hideAllBuckets() {
+      buckets.forEach((b) => {
+        b.warningElement.style.display = 'none';
+        b.element.style.display = 'none';
+      });
+    }
+
+    // ゲーム世界を初期状態に戻す
+    function resetGameWorld() {
+      posX = window.innerWidth / 2;
+      posY = window.innerHeight / 2;
+      player.style.left = posX + 'px';
+      player.style.top = posY + 'px';
+      currentDirection = 'right';
+      animTimer = 0;
+      rightFrameIndex = 0;
+      leftFrameIndex = 0;
+      player.src = 'walk1.png';
+
+      activeBucketCount = (Menu.mode === 'practice') ? PRACTICE_BUCKETS : 3;
+      buckets.forEach((b) => {
+        b.state = 'warning';
+        b.timer = 0;
+        b.x = Math.random() * (window.innerWidth - 200) + 100;
+        b.y = Math.random() * (window.innerHeight - 200) + 100;
+        b.element.style.opacity = 1.0;
+      });
+      hideAllBuckets();
+    }
+
+    // ===== 画面の遷移 =====
+    function backToMenu() {
+      clearInterval(countdownTimer);
+      gameState = 'menu';
+      hideAllBuckets();
+      resultScreen.style.display = 'none';
+      countdownEl.style.display = 'none';
+      btnQuitPractice.style.display = 'none';
+      info.style.display = 'none';
+      player.style.display = 'none';
+      Menu.show();
+    }
+
+    function beginGame() {
+      clearInterval(countdownTimer);
+      Menu.hide();
+      resultScreen.style.display = 'none';
+      info.style.display = 'block';
+      player.style.display = 'block';
+      btnQuitPractice.style.display = (Menu.mode === 'practice') ? 'block' : 'none';
+
+      resetGameWorld();
+      updateInfo(0);
+
+      gameState = 'countdown';
+      let n = COUNTDOWN_SECONDS;
+      countdownEl.textContent = n;
+      countdownEl.style.display = 'block';
+
+      countdownTimer = setInterval(() => {
+        n--;
+        if (n > 0) {
+          countdownEl.textContent = n;
+        } else {
+          clearInterval(countdownTimer);
+          countdownEl.textContent = 'スタート！';
+          gameState = 'playing';
+          playStartTime = performance.now();
+          setTimeout(() => {
+            if (gameState === 'playing') countdownEl.style.display = 'none';
+          }, 700);
+        }
+      }, 1000);
+    }
+
+    // ゲーム終了（cleared: 逃げ切りクリアなら true）
+    function endGame(cleared) {
+      gameState = 'result';
+      const elapsed = (performance.now() - playStartTime) / 1000;
+
+      if (Menu.mode === 'normal') {
+        const survived = Math.min(elapsed, GAME_TIME);
+        const isNewBest = Menu.recordSurvival(survived);
+
+        resultTitle.textContent = cleared ? 'めいから逃げ切った！' : 'めいに捕まった。。。';
+        resultSub.textContent =
+          (cleared ? `クリアタイム: ${GAME_TIME.toFixed(1)}秒` : `生き残った時間: ${survived.toFixed(1)}秒`) +
+          (isNewBest ? '\n🎉 ベスト記録を更新！' : '');
+        btnRetry.textContent = 'もう一度';
+        btnMenu.textContent = '待機画面に戻る';
+      } else {
+        practiceHitCount++;
+        if (practiceHitCount === 1) {
+          // 1回目：チュートリアル説明
+          resultTitle.textContent = 'バケツに当たった！';
+          resultSub.textContent =
+            'バケツに当たるとゲームオーバーになります。\n' +
+            '赤い影が大きくなったら、その場所から離れましょう。\n' +
+            'もう一度挑戦してみよう！';
+        } else {
+          // 2回目以降：ゲームオーバー表示（避ける操作の練習）
+          resultTitle.textContent = 'ゲームオーバー';
+          resultSub.textContent = `練習時間: ${elapsed.toFixed(1)}秒\n避ける操作を練習しよう！`;
+        }
+        btnRetry.textContent = 'もう一度挑戦';
+        btnMenu.textContent = '練習を終了';
       }
-    }, 1000);
+      resultScreen.style.display = 'block';
+    }
+
+    // ===== 結果画面・練習終了のボタン =====
+    btnRetry.addEventListener('click', () => {
+      if (gameState !== 'result') return;
+      beginGame();
+    });
+
+    btnMenu.addEventListener('click', backToMenu);
+    btnQuitPractice.addEventListener('click', backToMenu);
 
     function update() {
-      if (isGameOver) return;
+      requestAnimationFrame(update);
+      if (gameState !== 'playing') return;
+
+      const elapsed = (performance.now() - playStartTime) / 1000;
+
+      if (Menu.mode === 'normal') {
+        if (elapsed >= GAME_TIME) {
+          endGame(true);
+          return;
+        }
+        // 10秒ごとにバケツ数が増える（3 → 9 → 15）
+        activeBucketCount = Math.min(maxBuckets, 3 + 6 * Math.floor(elapsed / 10));
+      }
 
       let targetX = (window.innerWidth / 2) + (inputX * 5);
       let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
 
-      let smoothness = boostActive ? 0.3 : 0.02; 
+      let smoothness = boostActive ? 0.3 : 0.02;
 
       let prevX = posX;
       let prevY = posY;
 
-　　　 // --- 1. スピード・操作感の補正設定（ここでブースト倍率も調整できます） ---
+      // --- 1. スピード・操作感の補正設定（ここでブースト倍率も調整できます） ---
       const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
       const baseSpeed = 0.005;      // 通常時の移動スピード
       const boostMultiplier = 2.0; // ★ブースト時のスピード倍率（ここで調整！）
@@ -283,12 +559,11 @@
           let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
 
           let bucketRadius = finalSize / 5;
-          let playerRadius = 20; 
+          let playerRadius = 20;
 
           if (distance < (bucketRadius + playerRadius)) {
-            isGameOver = true;
-            resultText.innerHTML = "めいに捕まった。。。";
-            resultScreen.style.display = 'block';
+            endGame(false);
+            return;
           }
 
           // ★表示時間を「60フレーム（約1秒間）」に延ばして残るように修正
@@ -302,10 +577,7 @@
       }
 
       // --- タイマー表示 ---
-      let minutes = Math.floor(timeLeft / 60);
-      let seconds = timeLeft % 60;
-      let formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
-      info.textContent = `残り時間: ${minutes}:${formattedSeconds} | バケツ数: ${activeBucketCount} | ブースト: ${boostActive ? '🔥 ON' : 'OFF'}`;
+      updateInfo(elapsed);
 
       // --- 左右の向きと歩行アニメーション制御 ---
       let moveDelta = posX - prevX;
@@ -317,7 +589,7 @@
       let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
       if (movedDistance > 0.05) {
         animTimer++;
-        let interval = boostActive ? 3 : 10; 
+        let interval = boostActive ? 3 : 10;
 
         if (animTimer > interval) {
           if (currentDirection === 'right') {
@@ -332,10 +604,18 @@
       } else {
         player.src = (currentDirection === 'right') ? 'walk1.png' : 'walk5.png';
       }
-
-      requestAnimationFrame(update);
     }
 
+    // 待機画面を初期化して開始（スタートボタンが押されたら beginGame）
+    Menu.init({
+      gameTime: GAME_TIME,
+      onStart: () => {
+        if (gameState !== 'menu') return;
+        practiceHitCount = 0; // 練習モードを始めるたびにチュートリアルを最初から
+        beginGame();
+      }
+    });
+    Menu.show();
     update();
   </script>
 </body>

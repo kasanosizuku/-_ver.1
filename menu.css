@@ -1,0 +1,74 @@
+/* ===== 待機画面（メニュー）のスタイル =====
+   マークアップは game.html の #menu、動作は menu.js が担当します。 */
+
+#menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#menu .panel {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 16px;
+  padding: 24px 36px;
+  width: 560px;
+  max-width: 90vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  text-align: center;
+  color: #333;
+  box-sizing: border-box;
+}
+
+#menu h1 { margin: 0; font-size: 30px; }
+#menu .subtitle { margin: 4px 0 16px; color: #666; font-size: 16px; }
+
+.section { margin-bottom: 14px; }
+.section-title { font-size: 14px; font-weight: bold; color: #888; margin-bottom: 6px; }
+.btn-row { display: flex; gap: 10px; justify-content: center; }
+
+/* モード・ステージの選択ボタン */
+.choice {
+  flex: 1;
+  border: 3px solid #ccc;
+  border-radius: 10px;
+  background: #f5f5f5;
+  padding: 10px 8px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #555;
+}
+.choice small { display: block; font-size: 12px; font-weight: normal; margin-top: 2px; }
+.choice.selected { border-color: #e8590c; background: #fff0e6; color: #d9480f; }
+.choice:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* 遊び方の説明 */
+.howto {
+  text-align: left;
+  background: #f1f3f5;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.howto b { color: #d9480f; }
+
+/* コントローラーの受信状況 */
+#controller-status { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+#controller-status.ok { color: #2b8a3e; }
+#controller-status.wait { color: #e67700; }
+#controller-status.ng { color: #c92a2a; }
+
+/* ベスト記録 */
+#best-record { font-size: 15px; color: #555; margin-bottom: 14px; }
+
+/* ゲームスタートボタン（.main-btn の見た目は game.html 側で共通定義） */
+#btn-start { width: 100%; font-size: 26px; padding: 14px; }
