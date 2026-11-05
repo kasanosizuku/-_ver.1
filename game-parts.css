@@ -69,10 +69,11 @@
   height: 100%;
   display: block;
 }
-/* ポーズの切りかえ：ふだんは「つかむ手」、flat のときだけ「そろえた手」 */
-.mei-hand img.flat { display: none; }
+/* ポーズの切りかえ：ふだんは「つかむ手」、flat=そろえた手、squeeze=にぎった手 */
+.mei-hand img.flat, .mei-hand img.squeeze { display: none; }
 .mei-hand.flat img.flat { display: block; }
-.mei-hand.flat img.grab { display: none; }
+.mei-hand.squeeze img.squeeze { display: block; }
+.mei-hand.flat img.grab, .mei-hand.squeeze img.grab { display: none; }
 
 /* ぱちっと合わさった瞬間のスパーク */
 .clap-burst {

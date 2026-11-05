@@ -28,8 +28,8 @@ const Tutorial = (() => {
     `<img class="tut-chara ${cls || ''}" src="walk1.png" style="${style}" alt="">`;
   const kon = (color, style) =>
     `<img class="tut-kon" src="konpeito-${color}.png" style="${style}" alt="">`;
-  const hand = (side, style) =>
-    `<img class="tut-hand ${side}" src="${Hands.imageUrl}" style="${style}" alt="">`;
+  const hand = (side, style, src) =>
+    `<img class="tut-hand ${side}" src="${src || Hands.imageUrl}" style="${style}" alt="">`;
   const shake = (style) => `<span class="tut-shake" style="${style}">〰</span>`;
 
   // ----- ページ1：こんぺいとう -----
@@ -78,10 +78,9 @@ const Tutorial = (() => {
     const f2 = frame('②ぐっと ひく',
       hand('left', 'left:-357px;top:47px') + hand('right', 'right:-357px;top:47px') +
       chara('left:68px;top:66px', 'small'), true);
-    const f3 = frame('③いっきに のびる！',
-      hand('left', 'left:-282px;top:47px') +
-      '<span class="tut-lines pink" style="left:4px;top:34px;font-size:22px;color:#d6334c">≫≫</span>' +
-      chara('right:6px;top:22px', 'small'), true);
+    const f3 = frame('③ぱちっ！ ぎゅっ！',
+      hand('left', 'left:-318px;top:47px', Hands.imageUrlSqueeze) + hand('right', 'right:-318px;top:47px', Hands.imageUrlSqueeze) +
+      '<span class="tut-spark" style="left:76px;top:30px">✨</span>', true);
 
     return `
       <h2>めいの手に ちゅうい！</h2>
@@ -89,8 +88,8 @@ const Tutorial = (() => {
       <div class="tut-item">
         <div class="tut-strip">${f1}${arrow}${f2}${arrow}${f3}</div>
         <p class="tut-text">
-          ふるえたあと <b>ぐっと ひっこめて</b>、いっきに のびてくるよ。<br>
-          さいしょは かたほうだけ のびてくる（フェイント）。そのあと <b>りょうほうから はさみうち</b>！<br>
+          ふるえたあと <b>ぐっと ひっこめて</b>、いっきに のびてきて、<br>
+          <b>りょうほうから ぱちっと はさみうち</b>！ ぎゅっと にぎられちゃうよ。<br>
           てが ふるえたら、てと おなじたかさから <b>たてに</b> にげよう。<br>
           てのあいだの <b>すきま</b> には、バケツが おちてくるから はいっちゃだめ！
         </p>
