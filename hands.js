@@ -11,7 +11,7 @@
 //   Hands.debug()                         いまの状態を返す（動作確認用）
 //
 // 攻撃の流れ（1サイクル）:
-//   ① feint（フェイント）  かたほうの手が、画面のはしからのぞく→ふるえる→ぐっと引く→のびて戻る
+//   ① feint（フェイント）  両手が、画面のはしからのぞく→ふるえる→ぐっと引く→かたほうだけがのびて戻る（もう片方は引っこむ）
 //   ② pinch（はさみうち）  少し間をおいて、両手が同じようにのぞく→ふるえる→引く→左右から挟む
 //   ※ 赤い警戒表示はなく、手の「予備動作（のぞく・ふるえる・引く）」が合図
 //   ※ 手の絵は下の HAND_SVG に入っているので、hand.svg のファイルは不要。Hands.imageUrl で取り出せる
@@ -151,12 +151,18 @@ const Hands = (() => {
       case 'feintWarn': {
         const m = windup(p);
         dy = m.dy;
-        if (side === 'L') tipL = m.vis; else tipR = W - m.vis;
+        tipL = m.vis;                    // 両手がのぞいてふるえる（どちらが来るかは、まだ分からない）
+        tipR = W - m.vis;
         break;
       }
       case 'feintOut':
-        if (side === 'L') tipL = lerp(RECOIL, reachL, easeOut(p));
-        else tipR = lerp(W - RECOIL, reachR, easeOut(p));
+        if (side === 'L') {
+          tipL = lerp(RECOIL, reachL, easeOut(p));
+          tipR = lerp(W - RECOIL, retR, p);        // もう片方は、すっと引っこむ
+        } else {
+          tipR = lerp(W - RECOIL, reachR, easeOut(p));
+          tipL = lerp(RECOIL, retL, p);
+        }
         break;
       case 'feintHold':
         if (side === 'L') tipL = reachL; else tipR = reachR;
