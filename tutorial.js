@@ -9,7 +9,7 @@
 //       onBack:   「もどる」が押されたときに呼ぶ
 //   Tutorial.hide()
 //
-// 使う絵: walk1.png / konpeito-pink.svg / konpeito-yellow.svg / hand.svg / bucket.png
+// 使う絵: walk1.png / konpeito-pink.svg / konpeito-yellow.svg / Hands.imageUrl（hands.js に入っている手の絵）/ bucket.png
 
 const Tutorial = (() => {
   let root = null;
@@ -29,8 +29,8 @@ const Tutorial = (() => {
   const kon = (color, style) =>
     `<img class="tut-kon" src="konpeito-${color}.svg" style="${style}" alt="">`;
   const hand = (side, style) =>
-    `<img class="tut-hand ${side}" src="hand.svg" style="${style}" alt="">`;
-  const band = (style) => `<div class="tut-band" style="${style}"></div>`;
+    `<img class="tut-hand ${side}" src="${Hands.imageUrl}" style="${style}" alt="">`;
+  const shake = (style) => `<span class="tut-shake" style="${style}">〰</span>`;
 
   // ----- ページ1：こんぺいとう -----
   function pageKonpeito() {
@@ -72,27 +72,27 @@ const Tutorial = (() => {
 
   // ----- ページ2：めいの手（ステージ2） -----
   function pageHands() {
-    const f1 = frame('①かたほうが のびてくる',
-      band('top:64px;left:0;width:144px') +
-      hand('left', 'left:-70px;top:47px') +
+    const f1 = frame('①のぞいて ふるえる',
+      hand('left', 'left:-125px;top:47px') + shake('left:84px;top:36px') +
       chara('right:4px;top:22px', 'small'), true);
-    const f2 = frame('②りょうほうから はさむ！',
-      band('top:64px;left:0;width:100%') +
-      hand('left', 'left:-120px;top:47px') + hand('right', 'right:-120px;top:47px') +
-      chara('left:68px;top:20px', 'small'), true);
-    const f3 = frame('③すきまは わな！',
-      band('top:64px;left:0;width:100%') +
-      hand('left', 'left:-150px;top:47px') + hand('right', 'right:-150px;top:47px') +
-      '<img class="tut-bucket" src="bucket.png" alt="">' +
-      '<span class="tut-warn-mark">！</span>', true);
+    const f2 = frame('②ぐっと ひく',
+      hand('left', 'left:-165px;top:47px') +
+      '<span class="tut-lines pink" style="left:70px;top:50px;font-size:22px;color:#8a7a50">≪</span>' +
+      chara('right:4px;top:22px', 'small'), true);
+    const f3 = frame('③いっきに のびる！',
+      hand('left', 'left:-20px;top:47px') +
+      '<span class="tut-lines pink" style="left:4px;top:34px;font-size:22px;color:#d6334c">≫≫</span>' +
+      chara('right:6px;top:22px', 'small'), true);
 
     return `
       <h2>めいの手に ちゅうい！</h2>
-      <p class="tut-lead">ステージ2では、めいの りょうてが よこから のびてくるよ。<br>まず <b>赤い帯</b> が ひかって、そのあと てが やってくる！</p>
+      <p class="tut-lead">ステージ2では、めいの りょうてが よこから のびてくるよ。<br>てが <b>はしからのぞいて ふるえたら</b>、おそってくる合図！</p>
       <div class="tut-item">
         <div class="tut-strip">${f1}${arrow}${f2}${arrow}${f3}</div>
         <p class="tut-text">
-          かたほうが きたあとは、<b>りょうほうから はさみうち</b>！ 赤い帯の そとへ、<b>たてに</b> にげよう。<br>
+          ふるえたあと <b>ぐっと ひっこめて</b>、いっきに のびてくるよ。<br>
+          さいしょは かたほうだけ。そのあと <b>りょうほうから はさみうち</b>！<br>
+          てが ふるえたら、てと おなじたかさから <b>たてに</b> にげよう。<br>
           てのあいだの <b>すきま</b> には、バケツが おちてくるから はいっちゃだめ！
         </p>
       </div>

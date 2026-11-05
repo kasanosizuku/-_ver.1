@@ -1,6 +1,6 @@
 /* ===== ゲーム中の部品のスタイル =====
    こんぺいとう / ブーストの光 / ステージ2のめいの手 / 練習モードの説明。
-   絵（konpeito-*.svg / hand.svg）は同じフォルダに置く。
+   絵（konpeito-*.svg / 手の絵（hands.js に入っている））は同じフォルダに置く。
    どんぐり・葉っぱの絵の変数（--acorn-a など）は menu.css で定義している。 */
 
 /* ===== こんぺいとう ===== */
@@ -60,7 +60,7 @@
   pointer-events: none;
   display: none;
 }
-/* 袖を画面の外まで伸ばす（hand.svg の袖と同じ色・線） */
+/* 袖を画面の外まで伸ばす（手の絵（hands.js に入っている） の袖と同じ色・線） */
 .mei-hand::before {
   content: '';
   position: absolute;
@@ -80,25 +80,6 @@
 }
 /* 右の手は、左の手を左右反転して使う */
 .mei-hand.right { transform: scaleX(-1); }
-
-/* 手が来る前の赤い帯（予告） */
-.hand-warn {
-  position: absolute;
-  z-index: 2;
-  display: none;
-  align-items: center;
-  box-sizing: border-box;
-  padding: 0 22px;
-  border: 3px dashed rgba(255, 60, 60, 0.9);
-  border-radius: 20px;
-  background: rgba(255, 0, 0, 0.2);
-  color: #fff;
-  font-size: 32px;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 6px rgba(150, 0, 0, 0.95);
-  pointer-events: none;
-}
 
 /* ===== 練習モードの説明 ===== */
 #tutorial {
@@ -229,15 +210,10 @@
 .tut-score b { font-size: 18px; color: #9a761f; }
 
 /* 「めいの手」の説明コマ */
-.tut-band {
-  position: absolute;
-  height: 44px;
-  background: rgba(255, 0, 0, 0.2);
-  border-top: 2px dashed rgba(255, 60, 60, 0.9);
-  border-bottom: 2px dashed rgba(255, 60, 60, 0.9);
-}
 .tut-hand { position: absolute; width: 220px; height: auto; }
 .tut-hand.right { transform: scaleX(-1); }
+.tut-shake { position: absolute; font-size: 22px; font-weight: bold; color: #8a6a43; animation: tut-shake 0.35s steps(2) infinite; }
+@keyframes tut-shake { 50% { transform: translateY(3px); } }
 .tut-bucket {
   position: absolute;
   width: 62px;
@@ -245,14 +221,6 @@
   left: 59px;
   top: 55px;
   object-fit: contain;
-}
-.tut-warn-mark {
-  position: absolute;
-  left: 82px;
-  top: 28px;
-  font-size: 24px;
-  font-weight: bold;
-  color: #d6334c;
 }
 
 /* ボタンの列 */
