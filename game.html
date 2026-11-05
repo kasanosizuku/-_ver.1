@@ -176,6 +176,37 @@
       line-height: 1.7;
       white-space: pre-line;
     }
+    #result-rank {
+      display: none;
+      margin: 14px 0 0;
+      font-size: 22px;
+      font-weight: bold;
+      color: #8a5a1c;
+    }
+    #result-rank small { display: block; font-size: 13px; font-weight: normal; color: #8a7a55; }
+    /* 被弾時の画面ゆれ */
+    body.shake { animation: screen-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes screen-shake {
+      10%, 90% { transform: translate(-2px, 1px); }
+      20%, 80% { transform: translate(5px, -3px); }
+      30%, 50%, 70% { transform: translate(-9px, 4px); }
+      40%, 60% { transform: translate(9px, -4px); }
+    }
+    /* クリア時の紙吹雪 */
+    .confetti {
+      position: fixed;
+      top: -20px;
+      width: 10px;
+      height: 16px;
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0.95;
+      animation: confetti-fall linear forwards;
+    }
+    @keyframes confetti-fall {
+      0%   { transform: translate3d(0, 0, 0) rotate(0deg) rotateY(0deg); }
+      100% { transform: translate3d(var(--dx), 110vh, 0) rotate(var(--rot)) rotateY(720deg); }
+    }
     #result-buttons { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
   </style>
 </head>
@@ -229,6 +260,7 @@
   <div id="result-screen">
     <div id="result-title">めいに捕まった。。。</div>
     <div id="result-sub"></div>
+    <div id="result-rank"></div>
     <div id="result-buttons">
       <button id="btn-retry" class="main-btn">もう一度</button>
       <button id="btn-menu" class="sub-btn">待機画面に戻る</button>
@@ -287,6 +319,7 @@
     const resultScreen = document.getElementById('result-screen');
     const resultTitle = document.getElementById('result-title');
     const resultSub = document.getElementById('result-sub');
+    const resultRank = document.getElementById('result-rank');
     const btnRetry = document.getElementById('btn-retry');
     const btnMenu = document.getElementById('btn-menu');
     const btnQuitPractice = document.getElementById('btn-quit-practice');
@@ -315,9 +348,18 @@
     let nextKonpeitoAt = 0;          // 次に出す時刻（ゲーム開始からの秒）
     let konpeitoSpawnCount = 0;
 
-    let animTimer = 0;
-    let rightFrameIndex = 0;
-    let leftFrameIndex = 0;
+    let walkClock = 0;
+    let walkIdx = 0;
+    let lastMoveAt = 0;
+    let walkFrameNo = 1;
+    // 全コマを先に読み込んでおく（切り替え時のちらつき防止）
+    const walkImgs = [];
+    for (let i = 1; i <= 8; i++) { const im = new Image(); im.src = `walk${i}.png`; walkImgs.push(im); }
+    function setWalkFrame(n) {
+      if (n === walkFrameNo) return;
+      walkFrameNo = n;
+      player.src = `walk${n}.png`;
+    }
     let currentDirection = 'right';
 
     // バケツシステムの管理
@@ -573,10 +615,11 @@
       player.style.top = posY + 'px';
       player.classList.remove('boosting');
       currentDirection = 'right';
-      animTimer = 0;
-      rightFrameIndex = 0;
-      leftFrameIndex = 0;
-      player.src = 'walk1.png';
+      walkClock = 0;
+      walkIdx = 0;
+      lastMoveAt = 0;
+      walkFrameNo = 0;
+      setWalkFrame(1);
 
       activeBucketCount = (currentMode === 'practice') ? cfg.practiceBuckets : cfg.buckets.start;
       buckets.forEach((b) => {
@@ -604,6 +647,7 @@
       Hands.stop();
       removeKonpeito();
       hideAllBuckets();
+      clearEffects();
       resultScreen.style.display = 'none';
       countdownEl.style.display = 'none';
       btnQuitPractice.style.display = 'none';
@@ -623,6 +667,7 @@
       Tutorial.hide();
       Hands.stop();
       removeKonpeito();
+      clearEffects();
       resultScreen.style.display = 'none';
       info.style.display = 'block';
       player.style.display = 'block';
@@ -660,8 +705,53 @@
     }
 
     // ゲーム終了（cleared: 逃げ切りクリアなら true）
+    // ===== 称号（こんぺいとうの数で決まる） =====
+    const RANKS = [
+      { min: 0, name: '見習いくろすけ',     note: 'まずはこんぺいとうを探してみよう' },
+      { min: 1, name: 'おつかいくろすけ',   note: 'こんぺいとうをゲット！' },
+      { min: 2, name: 'こんぺいとう名人',   note: 'いい集めっぷり！' },
+      { min: 3, name: 'くろすけの親分',     note: 'こんぺいとうを集めきった！' }
+    ];
+    function rankFor(n) {
+      let r = RANKS[0];
+      for (const x of RANKS) if (n >= x.min) r = x;
+      return r;
+    }
+
+    // ===== 演出：画面ゆれ・紙吹雪 =====
+    let resultTimer = null;
+    function clearEffects() {
+      clearTimeout(resultTimer);
+      document.body.classList.remove('shake');
+      document.querySelectorAll('.confetti').forEach((e) => e.remove());
+    }
+    function startShake() {
+      const b = document.body;
+      b.classList.remove('shake');
+      void b.offsetWidth;
+      b.classList.add('shake');
+    }
+    function launchConfetti() {
+      const colors = ['#f2b8c6', '#f7d96a', '#9bd0a0', '#8cc4e8', '#f4a261', '#fbf5e3'];
+      for (let i = 0; i < 80; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = (Math.random() * 100) + 'vw';
+        c.style.background = colors[i % colors.length];
+        c.style.setProperty('--dx', ((Math.random() - 0.5) * 240) + 'px');
+        c.style.setProperty('--rot', ((Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 720)) + 'deg');
+        c.style.animationDuration = (2.6 + Math.random() * 2.2) + 's';
+        c.style.animationDelay = (Math.random() * 0.8) + 's';
+        c.style.width = (7 + Math.random() * 6) + 'px';
+        c.style.height = (11 + Math.random() * 8) + 'px';
+        document.body.appendChild(c);
+      }
+      setTimeout(() => document.querySelectorAll('.confetti').forEach((e) => e.remove()), 6500);
+    }
+
     function endGame(cleared) {
       gameState = 'result';
+      clearEffects();
       const elapsed = (performance.now() - playStartTime) / 1000;
       const scoreLine = `こんぺいとうスコア: ${score}こ`;
 
@@ -697,7 +787,21 @@
         btnRetry.textContent = 'もう一度挑戦';
         btnMenu.textContent = '練習を終了';
       }
-      resultScreen.style.display = 'block';
+      const rank = rankFor(score);
+      resultRank.innerHTML = `称号：「${rank.name}」<small>${rank.note}</small>`;
+      resultRank.style.display = 'block';
+
+      if (cleared) {
+        resultScreen.style.display = 'block';
+        launchConfetti();
+      } else {
+        // 被弾：画面をゆらしてから結果を出す
+        startShake();
+        resultScreen.style.display = 'none';
+        resultTimer = setTimeout(() => {
+          if (gameState === 'result') resultScreen.style.display = 'block';
+        }, 500);
+      }
     }
 
     // ===== 結果画面・練習終了のボタン =====
@@ -809,24 +913,21 @@
         else if (moveDelta < 0) currentDirection = 'left';
       }
 
-      let movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
+      // 歩行アニメ：時間ベースで 4 コマ（右=walk1-4 / 左=walk5-8）を順番に回す
+      const movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
       if (movedDistance > 0.05) {
-        animTimer++;
-        let interval = boostActive ? 3 : 10;
-
-        if (animTimer > interval) {
-          if (currentDirection === 'right') {
-            rightFrameIndex = (rightFrameIndex + 1) % 4;
-            player.src = `walk${rightFrameIndex + 1}.png`;
-          } else {
-            leftFrameIndex = (leftFrameIndex + 1) % 4;
-            player.src = `walk${5 + leftFrameIndex}.png`;
-          }
-          animTimer = 0;
+        lastMoveAt = nowT;
+        walkClock += dt * 1000;
+        const stepMs = boostActive ? 70 : 140;
+        while (walkClock >= stepMs) {
+          walkClock -= stepMs;
+          walkIdx = (walkIdx + 1) % 4;
         }
-      } else {
-        player.src = (currentDirection === 'right') ? 'walk1.png' : 'walk5.png';
+      } else if (nowT - lastMoveAt > 150) {
+        walkIdx = 0;      // 少し止まってから立ち姿に戻す（入力の細かい途切れでコマが戻らないように）
+        walkClock = 0;
       }
+      setWalkFrame((currentDirection === 'right' ? 1 : 5) + walkIdx);
     }
 
     // 待機画面を初期化して開始（スタートボタンが押されたら、練習なら説明 → ゲーム開始）
