@@ -149,11 +149,7 @@ const Hands = (() => {
 
     if (name === 'pinchWarn') {
       y2 = clamp(py, minY, maxY);                           // プレイヤーのいる高さをねらう
-      gap = (cycle % 2 === 1);                              // 2回に1回は「すきま」のわな
-      if (gap) {
-        gapX = W * (0.3 + Math.random() * 0.4);
-        if (gapHandler) gapHandler(gapX, y2, T.pinchWarn);
-      }
+      gap = false;                                          // 「すきま」のわなは廃止（いつも中央で手を合わせる）
     }
   }
 

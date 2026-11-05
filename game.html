@@ -379,8 +379,6 @@
     const buckets = [];
     const maxBuckets = 15;
     let activeBucketCount = 3;
-    // 最後のバケツは、ステージ2で「めいの手のすきま」専用に使う
-    const reservedBucket = () => buckets[maxBuckets - 1];
 
     for (let i = 0; i < maxBuckets; i ++) {
       const warningEl = document.createElement('div');
@@ -607,18 +605,6 @@
       return false;
     }
 
-    // ステージ2：めいの手の「すきま」に、バケツを落とす合図
-    Hands.setGapBucketHandler((x, y, warnSec) => {
-      const b = reservedBucket();
-      b.once = true;
-      b.warnFrames = Math.max(30, Math.round(warnSec * 60)); // 手が閉じる瞬間に落ちるよう、予告の長さを合わせる
-      b.state = 'warning';
-      b.timer = 0;
-      b.x = x;
-      b.y = y;
-      b.element.style.opacity = 1.0;
-    });
-
     // ゲーム世界を初期状態に戻す
     function resetGameWorld() {
       const cfg = STAGE_CONFIG[currentStage];
@@ -644,11 +630,6 @@
         b.y = Math.random() * (window.innerHeight - 200) + 100;
         b.element.style.opacity = 1.0;
       });
-      if (cfg.hands) {
-        // ステージ2：最後のバケツは、手の「すきま」が出るまで休ませる
-        reservedBucket().state = 'idle';
-        reservedBucket().once = true;
-      }
       hideAllBuckets();
     }
 
@@ -930,12 +911,6 @@
           return;
         }
       }
-      // ステージ2：めいの手の「すきま」専用バケツ
-      if (cfg.hands && stepBucket(reservedBucket())) {
-        endGame(false);
-        return;
-      }
-
       // --- ステージ2：めいの両手 ---
       if (cfg.hands) {
         if (Hands.update(dt, window.innerWidth, window.innerHeight, posX + 80, posY + 80, PLAYER_HIT_R)) {
