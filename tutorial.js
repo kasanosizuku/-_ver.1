@@ -9,7 +9,7 @@
 //       onBack:   「もどる」が押されたときに呼ぶ
 //   Tutorial.hide()
 //
-// 使う絵: walk1.png / konpeito-pink.png / konpeito-yellow.png / Hands.imageUrl（hands.js に入っている手の絵）/ bucket.png
+// 使う絵: walk1.png / konpeito-pink.png / konpeito-yellow.png / mei-hand.png / mei-arm.png/ bucket.png
 
 const Tutorial = (() => {
   let root = null;
@@ -28,8 +28,8 @@ const Tutorial = (() => {
     `<img class="tut-chara ${cls || ''}" src="walk1.png" style="${style}" alt="">`;
   const kon = (color, style) =>
     `<img class="tut-kon" src="konpeito-${color}.png" style="${style}" alt="">`;
-  const hand = (side, style, src) =>
-    `<img class="tut-hand ${side}" src="${src || Hands.imageUrl}" style="${style}" alt="">`;
+  // 手の絵：side, 指先の位置(コマの左はしから), 手の中心の高さ, 手の起こし具合(度)。コマの幅は 180
+  const hand = (side, tipX, cy, phi) => Hands.figureHTML(side, tipX, cy, phi, 0.09, 180);
   const shake = (style) => `<span class="tut-shake" style="${style}">〰</span>`;
 
   // ----- ページ1：こんぺいとう -----
@@ -70,17 +70,43 @@ const Tutorial = (() => {
       </div>`;
   }
 
-  // ----- ページ2：めいの手（ステージ2） -----
+  // ----- ページ：バケツ -----
+  function pageBucket() {
+    const shadow = (left, top, w, h, a) =>
+      `<div class="tut-shadow" style="left:${left}px;top:${top}px;width:${w}px;height:${h}px;opacity:${a}"></div>`;
+    const f1 = frame('①赤い影が でる',
+      chara('left:12px;top:42px') + shadow(112, 88, 34, 12, 0.35));
+    const f2 = frame('②影が 大きくなる',
+      chara('left:12px;top:42px') + shadow(112, 88, 70, 26, 0.8));
+    const f3 = frame('③バケツが とびだす！',
+      chara('left:12px;top:42px') + shadow(112, 92, 70, 26, 0.5) +
+      '<img class="tut-bucket" src="bucket.png" style="left:82px;top:36px;width:60px;height:60px" alt="">' +
+      '<span class="tut-spark" style="left:132px;top:22px">💥</span>');
+    return `
+      <h2>バケツに ちゅうい！</h2>
+      <p class="tut-lead">ステージのあちこちに、バケツが とびだしてくるよ。<br>まず <b>赤い影</b> が でるのが 合図！</p>
+      <div class="tut-item">
+        <div class="tut-strip">${f1}${arrow}${f2}${arrow}${f3}</div>
+        <p class="tut-text">
+          赤い影は <b>だんだん 大きく</b> なって、そのあと バケツが ドン！と でてくるよ。<br>
+          バケツに <b>あたると ゲームオーバー</b>。影が 大きくなったら、その ばしょから はなれよう！<br>
+          じかんが たつと、バケツの かずが ふえていくよ。（れんしゅうモードは かずが かわらないよ）
+        </p>
+      </div>`;
+  }
+
+  // ----- ページ：めいの手（ステージ2） -----
   function pageHands() {
+    const R = Hands.PHI_REACH, C = Hands.PHI_CLAP;
     const f1 = frame('①のぞいて ふるえる',
-      hand('left', 'left:-342px;top:47px') + hand('right', 'right:-342px;top:47px') +
-      shake('left:84px;top:34px') + chara('left:68px;top:66px', 'small'), true);
+      hand('left', 46, 74, R) + hand('right', 46, 74, R) +
+      shake('left:84px;top:36px') + chara('left:68px;top:68px', 'small'), true);
     const f2 = frame('②ぐっと ひく',
-      hand('left', 'left:-357px;top:47px') + hand('right', 'right:-357px;top:47px') +
-      chara('left:68px;top:66px', 'small'), true);
+      hand('left', 14, 74, R) + hand('right', 14, 74, R) +
+      chara('left:68px;top:68px', 'small'), true);
     const f3 = frame('③ぱちっ！ ぎゅっ！',
-      hand('left', 'left:-318px;top:47px', Hands.imageUrlSqueeze) + hand('right', 'right:-318px;top:47px', Hands.imageUrlSqueeze) +
-      '<span class="tut-spark" style="left:76px;top:30px">✨</span>', true);
+      hand('left', 90, 72, C) + hand('right', 90, 72, C) +
+      '<span class="tut-spark" style="left:76px;top:16px">✨</span>', true);
 
     return `
       <h2>めいの手に ちゅうい！</h2>
@@ -149,7 +175,7 @@ const Tutorial = (() => {
   function show(options) {
     opts = Object.assign({ stage: 1, boostSec: 3, interval: 10 }, options);
     if (!root) build();
-    pages = [pageKonpeito];
+    pages = [pageKonpeito, pageBucket];
     if (opts.stage === 2) pages.push(pageHands);
     index = 0;
     render();
