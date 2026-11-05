@@ -184,6 +184,9 @@
       color: #8a5a1c;
     }
     #result-rank small { display: block; font-size: 13px; font-weight: normal; color: #8a7a55; }
+    /* 製作者用：無敵モード中のしるし（まっくろくろすけが金色に光る） */
+    body.god #player { filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 16px #ffd34d); }
+    body.god #info::after { content: '  ★無敵'; color: #c58a00; font-weight: bold; }
     /* 被弾時の画面ゆれ */
     body.shake { animation: screen-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
     @keyframes screen-shake {
@@ -297,8 +300,8 @@
     const PLAYER_HIT_R = 38;         // めいの手に対するプレイヤーの当たり半径（バケツの判定は別）
 
     // こんぺいとう
-    const KONPEITO_INTERVAL = 10;    // 何秒にひとつ出現するか（最初のひとつはスタート直後）
-    const KONPEITO_LIFETIME = 9;     // 出現してから消えるまでの秒数（最後の2秒は点滅）
+    const KONPEITO_INTERVAL = 7.5;   // 何秒にひとつ出現するか（最初のひとつはスタート直後。30秒で 0/7.5/15/22.5 秒の4個）
+    const KONPEITO_LIFETIME = 7;     // 出現してから消えるまでの秒数（最後の2秒は点滅）
     const PINK_RATE = 0.5;           // ピンクが出る確率（残りはきいろ）
     const PICKUP_RADIUS = 70;        // ひろえる距離（プレイヤーの中心から）
     const BOOST_DURATION = 3;        // ブーストが続く秒数（ピンクをひろうたびに、ここからやり直し）
@@ -347,7 +350,17 @@
     let konpeito = null;             // いま画面にあるこんぺいとう（なければ null）
     let nextKonpeitoAt = 0;          // 次に出す時刻（ゲーム開始からの秒）
     let konpeitoSpawnCount = 0;
+    let konpeitoBag = ['pink', 'yellow', 'yellow', 'yellow'];  // 通常モード：4個のうちピンク1・きいろ3（順番はランダム）
+    function shuffleBag() {
+      for (let i = konpeitoBag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [konpeitoBag[i], konpeitoBag[j]] = [konpeitoBag[j], konpeitoBag[i]];
+      }
+    }
 
+    // 移動速度の倍率（横=ゆっくり / 縦=速く。以前は 横10・縦5）
+    const SPEED_X = 7;
+    const SPEED_Y = 8;
     let walkClock = 0;
     let walkIdx = 0;
     let lastMoveAt = 0;
@@ -495,7 +508,7 @@
     function updateKonpeito(elapsed) {
       // 出現
       if (elapsed >= nextKonpeitoAt) {
-        const forced = (currentMode === 'practice') ? PRACTICE_COLORS[konpeitoSpawnCount] : undefined;
+        const forced = (currentMode === 'practice') ? PRACTICE_COLORS[konpeitoSpawnCount] : konpeitoBag[konpeitoSpawnCount % konpeitoBag.length];
         spawnKonpeito(forced);
         konpeito.born = elapsed;
         konpeitoSpawnCount++;
@@ -678,6 +691,7 @@
       boostUntil = 0;
       nextKonpeitoAt = 0;      // 最初のこんぺいとうは、ゲーム開始の直後に出る
       konpeitoSpawnCount = 0;
+      shuffleBag();
 
       resetGameWorld();
       updateInfo(0);
@@ -705,6 +719,32 @@
     }
 
     // ゲーム終了（cleared: 逃げ切りクリアなら true）
+    // ===== 製作者用の隠しコマンド（無敵） =====
+    // PC：キーボードで ↑↑↓↓←→←→ B A（コナミコマンド）で ON/OFF
+    // スマホ/URL：game.html?god=1 で最初から無敵
+    let invincible = /[?&]god=1\b/.test(location.search);
+    const GOD_CODE = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+    let godPos = 0;
+    function applyInvincible() {
+      document.body.classList.toggle('god', invincible);
+      player.style.filter = '';
+    }
+    document.addEventListener('keydown', (e) => {
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (k === GOD_CODE[godPos]) {
+        godPos++;
+        if (godPos === GOD_CODE.length) {
+          godPos = 0;
+          invincible = !invincible;
+          applyInvincible();
+        }
+      } else {
+        godPos = (k === GOD_CODE[0]) ? 1 : 0;
+      }
+    });
+
+    applyInvincible();
+
     // ===== 称号（こんぺいとうの数で決まる） =====
     const RANKS = [
       { min: 0, name: '見習いくろすけ',     note: 'まずはこんぺいとうを探してみよう' },
@@ -750,6 +790,7 @@
     }
 
     function endGame(cleared) {
+      if (!cleared && invincible) return;   // 製作者用：無敵中はやられない
       gameState = 'result';
       clearEffects();
       const elapsed = (performance.now() - playStartTime) / 1000;
@@ -870,8 +911,8 @@
       let currentSpeed = boostActive ? (baseSpeed * boostMultiplier) : baseSpeed;
 
       // 6. 速度を座標に加算して進み続ける処理
-      posX += moveX * currentSpeed * 10;
-      posY += moveY * currentSpeed * 5;
+      posX += moveX * currentSpeed * SPEED_X;
+      posY += moveY * currentSpeed * SPEED_Y;
 
       posX = Math.max(0, Math.min(window.innerWidth - 160, posX));
       posY = Math.max(0, Math.min(window.innerHeight - 160, posY));
