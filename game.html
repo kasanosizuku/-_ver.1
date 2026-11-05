@@ -700,6 +700,34 @@
     }
 
     // ゲーム終了（cleared: 逃げ切りクリアなら true）
+    // ===== PCのキーボード操作 =====
+    // 矢印キー または WASD で移動（スマホを大きく傾けたときと同じ速さ。変えたいときは KEY_TILT）。ステージ選択などは画面のボタンで。
+    const KEY_TILT = 45;
+    const keysDown = new Set();
+    let keyX = 0;
+    let keyY = 0;
+    const KEY_MAP = {
+      ArrowLeft: 'L', a: 'L', ArrowRight: 'R', d: 'R', ArrowUp: 'U', w: 'U', ArrowDown: 'D', s: 'D'
+    };
+    function refreshKeys() {
+      keyX = (keysDown.has('R') ? 1 : 0) - (keysDown.has('L') ? 1 : 0);
+      keyY = (keysDown.has('D') ? 1 : 0) - (keysDown.has('U') ? 1 : 0);
+    }
+    document.addEventListener('keydown', (e) => {
+      const k = KEY_MAP[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      if (!k) return;
+      if (e.key.startsWith('Arrow') && gameState === 'playing') e.preventDefault();  // 画面のスクロール防止
+      keysDown.add(k);
+      refreshKeys();
+    });
+    document.addEventListener('keyup', (e) => {
+      const k = KEY_MAP[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      if (!k) return;
+      keysDown.delete(k);
+      refreshKeys();
+    });
+    window.addEventListener('blur', () => { keysDown.clear(); refreshKeys(); });
+
     // ===== 製作者用の隠しコマンド（無敵） =====
     // PC：キーボードで ↑↑↓↓←→←→ B A（コナミコマンド）で ON/OFF
     // スマホ/URL：game.html?god=1 で最初から無敵
@@ -875,6 +903,9 @@
       // 2. 傾きの取得と持ち手の角度調整
       let rawX = inputX;
       let rawY = inputY - 30; // 縦の持ち方オフセット
+      // PCのキーボード操作（矢印キー / WASD）。押している間はスマホの傾きより優先
+      if (keyX !== 0) rawX = keyX * KEY_TILT;
+      if (keyY !== 0) rawY = keyY * KEY_TILT;
 
       // 3. デッドゾーン（微小な傾きをカットして勝手に動かないようにする）
       if (Math.abs(rawX) < deadzone) rawX = 0;
