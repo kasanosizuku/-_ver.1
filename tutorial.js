@@ -73,13 +73,13 @@ const Tutorial = (() => {
   // ----- ページ2：めいの手（ステージ2） -----
   function pageHands() {
     const f1 = frame('①のぞいて ふるえる',
-      hand('left', 'left:-150px;top:47px') + hand('right', 'right:-150px;top:47px') +
+      hand('left', 'left:-342px;top:47px') + hand('right', 'right:-342px;top:47px') +
       shake('left:84px;top:34px') + chara('left:68px;top:66px', 'small'), true);
     const f2 = frame('②ぐっと ひく',
-      hand('left', 'left:-165px;top:47px') + hand('right', 'right:-165px;top:47px') +
+      hand('left', 'left:-357px;top:47px') + hand('right', 'right:-357px;top:47px') +
       chara('left:68px;top:66px', 'small'), true);
     const f3 = frame('③いっきに のびる！',
-      hand('left', 'left:-20px;top:47px') +
+      hand('left', 'left:-282px;top:47px') +
       '<span class="tut-lines pink" style="left:4px;top:34px;font-size:22px;color:#d6334c">≫≫</span>' +
       chara('right:6px;top:22px', 'small'), true);
 

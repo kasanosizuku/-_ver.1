@@ -1,6 +1,6 @@
 /* ===== ゲーム中の部品のスタイル =====
    こんぺいとう / ブーストの光 / ステージ2のめいの手 / 練習モードの説明。
-   絵（konpeito-*.png / 手の絵（hands.js に入っている））は同じフォルダに置く。
+   絵（konpeito-*.png）は同じフォルダに置く。
    どんぐり・葉っぱの絵の変数（--acorn-a など）は menu.css で定義している。 */
 
 /* ===== こんぺいとう ===== */
@@ -54,29 +54,42 @@
 /* ===== ステージ2：めいの両手 ===== */
 .mei-hand {
   position: absolute;
-  width: 640px;
+  width: 1200px;
   height: 200px;
   z-index: 6;
   pointer-events: none;
   display: none;
 }
-/* 袖を画面の外まで伸ばす（手の絵（hands.js に入っている） の袖と同じ色・線） */
-.mei-hand::before {
-  content: '';
-  position: absolute;
-  right: 100%;
-  top: 49px;
-  height: 122px;
-  width: 3000px;
-  box-sizing: border-box;
-  background: #8fb573;
-  border-top: 2px solid #5f8a4b;
-  border-bottom: 2px solid #5f8a4b;
-}
+/* うでは手の絵の中に左へ長くのびている（画面のはばをこえても足りる長さ） */
 .mei-hand img {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
   height: 100%;
   display: block;
+}
+/* ポーズの切りかえ：ふだんは「つかむ手」、flat のときだけ「そろえた手」 */
+.mei-hand img.flat { display: none; }
+.mei-hand.flat img.flat { display: block; }
+.mei-hand.flat img.grab { display: none; }
+
+/* ぱちっと合わさった瞬間のスパーク */
+.clap-burst {
+  position: absolute;
+  z-index: 7;
+  width: 170px;
+  height: 170px;
+  margin: -85px 0 0 -85px;
+  display: none;
+  pointer-events: none;
+  background: center / contain no-repeat;
+  animation: clap-burst 0.38s ease-out forwards;
+}
+@keyframes clap-burst {
+  0% { opacity: 1; transform: scale(0.3); }
+  60% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.25); }
 }
 /* 右の手は、左の手を左右反転して使う */
 .mei-hand.right { transform: scaleX(-1); }
@@ -210,7 +223,7 @@
 .tut-score b { font-size: 18px; color: #9a761f; }
 
 /* 「めいの手」の説明コマ */
-.tut-hand { position: absolute; width: 220px; height: auto; }
+.tut-hand { position: absolute; width: 412px; height: auto; }
 .tut-hand.right { transform: scaleX(-1); }
 .tut-shake { position: absolute; font-size: 22px; font-weight: bold; color: #8a6a43; animation: tut-shake 0.35s steps(2) infinite; }
 @keyframes tut-shake { 50% { transform: translateY(3px); } }
