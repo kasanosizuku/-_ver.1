@@ -145,7 +145,7 @@ const Hands = (() => {
       }
     }
     const minY = 170;                      // 手の高さ（約260px）が画面からはみ出さないように
-    const maxY = H - 170;
+    const maxY = Math.max(minY, H - 170);
 
     if (name === 'pinchWarn') {
       y2 = clamp(py, minY, maxY);                           // プレイヤーのいる高さをねらう

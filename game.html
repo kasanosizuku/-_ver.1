@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>君のまっくろくろすけ - 飛び出すバケツ避けサバイバル</title>
   <!-- 待機画面のスタイルは menu.css、こんぺいとう・めいの手・練習の説明のスタイルは game-parts.css -->
   <link rel="stylesheet" href="menu.css">
@@ -10,11 +11,17 @@
     /* 背景が画面全体を基準に配置されるよう、高さを画面いっぱいにする */
     html {
       height: 100%;
+      overscroll-behavior: none;          /* スマホで引っぱって更新・スクロールしない */
     }
     body {
       height: 100%;
       margin: 0;
       overflow: hidden;
+      touch-action: manipulation;         /* ダブルタップでの拡大を防ぐ */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
       background-image: url('background.jpg');
       background-size: cover;
       background-position: center center;
@@ -211,6 +218,25 @@
       100% { transform: translate3d(var(--dx), 110vh, 0) rotate(var(--rot)) rotateY(720deg); }
     }
     #result-buttons { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
+    /* ===== スマホ向けの表示調整 ===== */
+    #result-screen { box-sizing: border-box; width: min(520px, 92vw); max-height: 94vh; overflow-y: auto; }
+    #result-buttons { flex-wrap: wrap; }
+    #result-buttons button { white-space: nowrap; }
+    @media (max-width: 700px), (max-height: 520px) {
+      #info { font-size: 13px; padding: 6px 10px; top: 6px; left: 6px; right: 6px; line-height: 1.4; }
+      #result-screen { padding: 16px 18px; border-radius: 22px; }
+      #result-title { font-size: 24px; }
+      #result-sub { font-size: 15px; margin-top: 8px; line-height: 1.55; }
+      #result-rank { font-size: 18px; margin-top: 8px; }
+      #result-rank small { font-size: 12px; }
+      #result-buttons { margin-top: 12px; gap: 8px; }
+      #result-buttons button { font-size: 15px; padding: 10px 16px; }
+    }
+    @media (max-height: 420px) {
+      #result-title { font-size: 20px; }
+      #result-sub { font-size: 13px; line-height: 1.4; }
+      #result-screen { padding: 10px 16px; }
+    }
   </style>
 </head>
 
@@ -689,6 +715,7 @@
         } else {
           clearInterval(countdownTimer);
           countdownEl.textContent = 'スタート！';
+          calibrateOwnTilt();   // いまの持ち方を「まんなか」にする
           gameState = 'playing';
           playStartTime = performance.now();
           if (cfg.hands) Hands.start();
@@ -700,6 +727,49 @@
     }
 
     // ゲーム終了（cleared: 逃げ切りクリアなら true）
+    // ===== このスマホ自体の傾きで操作（リンクをスマホで開いたとき） =====
+    // iOS は、ボタンを押した操作の中でセンサーの許可が必要。スタートボタンなど画面を触ったときに一度だけ求める。
+    let ownTilt = null;                 // { x, y } 傾き（度）。センサーが動いている間だけ入る
+    let ownTiltAt = 0;
+    let ownNeutral = null;              // ゲーム開始時の持ち方を「まんなか」にする
+    let ownRaw = null;
+    let sensorStarted = false;
+    function screenAngle() {
+      const a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+      return ((a % 360) + 360) % 360;
+    }
+    function onOwnOrientation(e) {
+      if (e.gamma == null || e.beta == null) return;   // PCなどセンサーがないときは null が来る
+      const g = e.gamma, b = e.beta;
+      let x, y;
+      switch (screenAngle()) {                          // 画面の向きに合わせて軸を入れ替える
+        case 90:  x = b;  y = -g; break;
+        case 180: x = -g; y = -b; break;
+        case 270: x = -b; y = g;  break;
+        default:  x = g;  y = b;
+      }
+      ownRaw = { x, y };
+      if (!ownNeutral) ownNeutral = { x, y };
+      // 操作側の計算は「縦=30度を基準」なので、まんなか＋30 を縦の値として渡す
+      ownTilt = { x: x - ownNeutral.x, y: y - ownNeutral.y + 30 };
+      ownTiltAt = performance.now();
+    }
+    function calibrateOwnTilt() { ownNeutral = ownRaw ? { x: ownRaw.x, y: ownRaw.y } : null; }
+    async function startOwnSensor() {
+      if (sensorStarted || typeof DeviceOrientationEvent === 'undefined') return;
+      try {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const r = await DeviceOrientationEvent.requestPermission();
+          if (r !== 'granted') return;
+        }
+        sensorStarted = true;
+        window.addEventListener('deviceorientation', onOwnOrientation);
+      } catch (err) { /* 許可されなかった・使えない：リモコン/キーボードで遊べる */ }
+    }
+    // 最初にタッチされたとき（スタートボタンの操作内）に許可をたずねる
+    document.addEventListener('click', startOwnSensor, { once: true });
+    document.addEventListener('touchend', startOwnSensor, { once: true });
+
     // ===== PCのキーボード操作 =====
     // 矢印キー または WASD で移動（スマホを大きく傾けたときと同じ速さ。変えたいときは KEY_TILT）。ステージ選択などは画面のボタンで。
     const KEY_TILT = 45;
@@ -903,6 +973,11 @@
       // 2. 傾きの取得と持ち手の角度調整
       let rawX = inputX;
       let rawY = inputY - 30; // 縦の持ち方オフセット
+      // このスマホ自体の傾き（センサーが生きている間は、そちらを使う）
+      if (ownTilt && performance.now() - ownTiltAt < 1000) {
+        rawX = ownTilt.x;
+        rawY = ownTilt.y - 30;
+      }
       // PCのキーボード操作（矢印キー / WASD）。押している間はスマホの傾きより優先
       if (keyX !== 0) rawX = keyX * KEY_TILT;
       if (keyY !== 0) rawY = keyY * KEY_TILT;
