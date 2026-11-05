@@ -64,7 +64,7 @@ const Hands = (() => {
     const L = layout(tipX, cy, phi, k);
     const wx = (side === 'left') ? L.wx : W - L.wx;
     const tf = (side === 'left') ? `rotate(${-phi}deg)` : `scaleX(-1) rotate(${-phi}deg)`;
-    return `<div class="mei-fig ${side}" style="--k:${k};left:${wx}px;top:${L.wy}px;transform:${tf}"><img src="mei-hand.png" alt=""></div>`;
+    return `<div class="mei-fig ${side}" style="--k:${k};left:${wx}px;top:${L.wy}px;transform:${tf}"><img src="mei-hand.png?v=2" alt=""></div>`;
   }
 
   // ===== 画面に置く部品 =====

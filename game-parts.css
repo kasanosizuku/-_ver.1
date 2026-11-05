@@ -80,7 +80,7 @@
   top: calc(-830px * var(--k));
   width: 3000px;
   height: calc(960px * var(--k));
-  background: url('mei-arm.png') repeat-x left top / 2px 100%;
+  background: url('mei-arm.png?v=2') repeat-x left top / 2px 100%;
 }
 
 /* ぱちっと合わさった瞬間のスパーク */
