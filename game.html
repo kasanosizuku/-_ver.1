@@ -42,7 +42,7 @@
       display: none;
     }
     /* まっくろくろすけ（160px） */
-    #player {
+    #player, #player2 {
       position: absolute;
       width: 160px;
       height: 160px;
@@ -192,7 +192,7 @@
     }
     #result-rank small { display: block; font-size: 13px; font-weight: normal; color: #8a7a55; }
     /* 製作者用：無敵モード中のしるし（まっくろくろすけが金色に光る） */
-    body.god #player { filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 16px #ffd34d); }
+    body.god #player, body.god #player2 { filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 16px #ffd34d); }
     body.god #info::after { content: '  ★無敵'; color: #c58a00; font-weight: bold; }
     /* 被弾時の画面ゆれ */
     body.shake { animation: screen-shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
@@ -256,6 +256,7 @@
   <div id="info">残り時間: 0:30 | スコア: 0 | バケツ数: 3 | ブースト: OFF</div>
   <button id="btn-quit-practice">練習を終了</button>
   <img id="player" src="walk1.png" alt="まっくろくろすけ">
+  <img id="player2" src="p2-walk1.png" alt="まっくろくろすけ（2P・リボン）">
 
   <div id="countdown"></div>
 
@@ -274,6 +275,14 @@
       </div>
 
       <div class="section">
+        <div class="section-title">プレイ人数</div>
+        <div class="btn-row">
+          <button class="choice selected" data-players="1">ひとりで<small>1P</small></button>
+          <button class="choice" data-players="2">ふたりで<small>1P・2P（ピンクのリボン）</small></button>
+        </div>
+      </div>
+
+      <div class="section">
         <div class="section-title">ステージ</div>
         <div class="btn-row">
           <button class="choice selected" data-stage="1">ステージ1<small>飛び出すバケツ</small></button>
@@ -288,6 +297,7 @@
         ・<b>ピンクのこんぺいとう</b>をひろうと、少しの間ブースト（スピード2倍）！<br>
         ・<b>きいろのこんぺいとう</b>をひろうと、スコアが+1こ。<br>
         ・<b>赤い影</b>が大きくなったらバケツが来る合図！ めいの手は、<b>ふるえたら</b>おそってくる合図！ その場所から離れよう。<br>
+        ・<b>ふたりプレイ</b>：1Pは矢印キー（またはコントローラー1P）、2PはWASD（またはコントローラー2P）。こんぺいとうとスコアは共有。つかまった人は退場、ふたりともつかまるとゲームオーバー。ひとりでも逃げ切ればクリア！<br>
         ・当たるとゲームオーバー。制限時間（ステージ1・2は30秒、ステージ3は60秒）まで逃げ切ればクリアです。
       </div>
 
@@ -363,6 +373,7 @@
     function gameTimeNow() { return STAGE_CONFIG[currentStage].time; }
 
     const player = document.getElementById('player');
+    const player2 = document.getElementById('player2');
     const info = document.getElementById('info');
     const resultScreen = document.getElementById('result-screen');
     const resultTitle = document.getElementById('result-title');
@@ -377,6 +388,29 @@
     let posY = window.innerHeight / 2;
     let inputX = 0;
     let inputY = 0;
+
+    // ===== プレイヤー（1P・2P） =====
+    // 1P は、これまでの変数（posX など）をそのまま使い、2P は自分の値を持つ。
+    let twoPlayer = false;
+    const P1 = {
+      id: 1, prefix: 'walk', alive: true,
+      get el() { return player; },
+      get x() { return posX; }, set x(v) { posX = v; },
+      get y() { return posY; }, set y(v) { posY = v; },
+      get boostUntil() { return boostUntil; }, set boostUntil(v) { boostUntil = v; },
+      get boostActive() { return boostActive; }, set boostActive(v) { boostActive = v; },
+      get dir() { return currentDirection; }, set dir(v) { currentDirection = v; },
+      walk: { clock: 0, idx: 0, lastMoveAt: 0, frameNo: 1 }
+    };
+    const P2 = {
+      id: 2, prefix: 'p2-walk', alive: false,
+      el: document.getElementById('player2'),
+      x: 0, y: 0, boostUntil: 0, boostActive: false, dir: 'right',
+      inputX: 0, inputY: 30,
+      walk: { clock: 0, idx: 0, lastMoveAt: 0, frameNo: 1 }
+    };
+    const activePlayers = () => (twoPlayer ? [P1, P2] : [P1]);
+    const alivePlayers = () => activePlayers().filter((p) => p.alive);
 
     // ブースト：こんぺいとう（ピンク）をひろうと、boostUntil（ゲーム開始からの秒）まで続く
     let boostActive = false;
@@ -423,17 +457,21 @@
       clearTimeout(bannerTimer);
       bannerTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
-    let walkClock = 0;
-    let walkIdx = 0;
-    let lastMoveAt = 0;
-    let walkFrameNo = 1;
     // 全コマを先に読み込んでおく（切り替え時のちらつき防止）
     const walkImgs = [];
-    for (let i = 1; i <= 8; i++) { const im = new Image(); im.src = `walk${i}.png`; walkImgs.push(im); }
-    function setWalkFrame(n) {
-      if (n === walkFrameNo) return;
-      walkFrameNo = n;
-      player.src = `walk${n}.png`;
+    for (let i = 1; i <= 8; i++) {
+      const a = new Image(); a.src = `walk${i}.png`; walkImgs.push(a);
+      const b = new Image(); b.src = `p2-walk${i}.png`; walkImgs.push(b);
+    }
+    function setWalkFrame(p, n) {
+      if (n === p.walk.frameNo) return;
+      p.walk.frameNo = n;
+      p.el.src = `${p.prefix}${n}.png`;
+    }
+    function resetWalk(p) {
+      p.walk.clock = 0; p.walk.idx = 0; p.walk.lastMoveAt = 0; p.walk.frameNo = 0;
+      p.dir = 'right';
+      setWalkFrame(p, 1);
     }
     let currentDirection = 'right';
 
@@ -480,7 +518,22 @@
       if (firstSnapshot) {
         firstSnapshot = false;
       } else {
-        Menu.notifyInput();
+        Menu.notifyInput(1);
+      }
+    });
+
+    // 2P のコントローラー（index.html で「2P」を選んだスマホ）
+    let firstSnapshot2 = true;
+    database.ref('player2/move').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        P2.inputX = data.x;
+        P2.inputY = data.y;
+      }
+      if (firstSnapshot2) {
+        firstSnapshot2 = false;
+      } else {
+        Menu.notifyInput(2);
       }
     });
 
@@ -494,14 +547,18 @@
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     }
 
+    function boostLabel(p, elapsed) {
+      if (!p.alive) return '退場';
+      return p.boostActive ? `✨ 残り${Math.max(0, p.boostUntil - elapsed).toFixed(1)}秒` : 'OFF';
+    }
     function updateInfo(elapsed) {
-      const boostText = boostActive ? `✨ 残り${Math.max(0, boostUntil - elapsed).toFixed(1)}秒` : 'OFF';
+      const boostText = twoPlayer ? `1P ${boostLabel(P1, elapsed)} / 2P ${boostLabel(P2, elapsed)}` : boostLabel(P1, elapsed);
       const common = `スコア: ${score} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
       if (currentMode === 'normal') {
         const timeLeft = Math.max(0, Math.ceil(gameTimeNow() - elapsed));
-        info.textContent = `ステージ${currentStage} | 残り時間: ${formatTime(timeLeft)} | ${common}`;
+        info.textContent = `${twoPlayer ? 'ふたり ' : ''}ステージ${currentStage} | 残り時間: ${formatTime(timeLeft)} | ${common}`;
       } else {
-        info.textContent = `練習モード（ステージ${currentStage}） | 経過時間: ${formatTime(elapsed)} | ${common}`;
+        info.textContent = `練習モード${twoPlayer ? '・ふたり' : ''}（ステージ${currentStage}） | 経過時間: ${formatTime(elapsed)} | ${common}`;
       }
     }
 
@@ -531,7 +588,7 @@
         x = 100 + Math.random() * (window.innerWidth - 200);
         y = 130 + Math.random() * (window.innerHeight - 260);
         tries++;
-      } while (tries < 20 && Math.hypot(x - (posX + 80), y - (posY + 80)) < 220);
+      } while (tries < 20 && alivePlayers().some((p) => Math.hypot(x - (p.x + 80), y - (p.y + 80)) < 220));
 
       const el = document.createElement('img');
       el.src = `konpeito-${color}.png`;
@@ -553,11 +610,11 @@
       setTimeout(() => el.remove(), 1200);
     }
 
-    function pickKonpeito(elapsed) {
+    function pickKonpeito(elapsed, p) {
       const k = konpeito;
       removeKonpeito();
       if (k.color === 'pink') {
-        boostUntil = elapsed + BOOST_DURATION;   // クールタイムなし。ひろうたびに時間をやり直す
+        p.boostUntil = elapsed + BOOST_DURATION;   // クールタイムなし。ひろうたびに時間をやり直す
         showPop(k.x, k.y, 'ブースト！', 'pink');
       } else {
         score++;
@@ -585,11 +642,15 @@
       if (age > KONPEITO_LIFETIME - 2) konpeito.el.classList.add('blink');
 
       // ひろう
-      const dist = Math.hypot(posX + 80 - konpeito.x, posY + 80 - konpeito.y);
-      if (dist < PICKUP_RADIUS) pickKonpeito(elapsed);
+      for (const p of alivePlayers()) {
+        if (Math.hypot(p.x + 80 - konpeito.x, p.y + 80 - konpeito.y) < PICKUP_RADIUS) {
+          pickKonpeito(elapsed, p);
+          break;
+        }
+      }
     }
 
-    // ===== バケツ（1個ぶんの動き。当たったら true を返す） =====
+    // ===== バケツ（1個ぶんの動き。当たったプレイヤーを返す。当たらなければ false） =====
     function stepBucket(b) {
       if (b.state === 'idle') return false;
 
@@ -636,16 +697,13 @@
           b.element.style.opacity = 1.0;
         }
 
-        // 当たり判定（表示されている間中ずっと有効）
-        let playerCenterX = posX + 30;
-        let playerCenterY = posY + 30;
-        let distance = Math.hypot(playerCenterX - b.x, playerCenterY - b.y);
-
-        let bucketRadius = finalSize / 5;
-        let playerRadius = 20;
-
-        if (distance < (bucketRadius + playerRadius)) {
-          return true;
+        // 当たり判定（表示されている間中ずっと有効）。当たったプレイヤーを返す
+        const bucketRadius = finalSize / 5;
+        const playerRadius = 20;
+        for (const p of alivePlayers()) {
+          if (Math.hypot(p.x + 30 - b.x, p.y + 30 - b.y) < (bucketRadius + playerRadius)) {
+            return p;
+          }
         }
 
         // ★表示時間を「60フレーム（約1秒間）」に延ばして残るように修正
@@ -670,17 +728,25 @@
     // ゲーム世界を初期状態に戻す
     function resetGameWorld() {
       const cfg = STAGE_CONFIG[currentStage];
-      posX = window.innerWidth / 2;
+      const cx = window.innerWidth / 2;
+      posX = twoPlayer ? cx - 170 : cx;
       posY = window.innerHeight / 2;
       player.style.left = posX + 'px';
       player.style.top = posY + 'px';
       player.classList.remove('boosting');
-      currentDirection = 'right';
-      walkClock = 0;
-      walkIdx = 0;
-      lastMoveAt = 0;
-      walkFrameNo = 0;
-      setWalkFrame(1);
+      P1.alive = true;
+      resetWalk(P1);
+
+      P2.alive = twoPlayer;
+      P2.x = cx + 10;
+      P2.y = window.innerHeight / 2;
+      P2.boostUntil = 0;
+      P2.boostActive = false;
+      P2.el.style.left = P2.x + 'px';
+      P2.el.style.top = P2.y + 'px';
+      P2.el.style.display = twoPlayer ? 'block' : 'none';
+      P2.el.classList.remove('boosting');
+      resetWalk(P2);
 
       activeBucketCount = (currentMode === 'practice') ? cfg.practiceBuckets : cfg.buckets.start;
       buckets.forEach((b) => {
@@ -710,6 +776,8 @@
       info.style.display = 'none';
       player.style.display = 'none';
       player.classList.remove('boosting');
+      player2.style.display = 'none';
+      player2.classList.remove('boosting');
       Menu.show();
     }
 
@@ -717,6 +785,7 @@
       clearInterval(countdownTimer);
       currentStage = Menu.stage;
       currentMode = Menu.mode;
+      twoPlayer = (Menu.players === 2);
       const cfg = STAGE_CONFIG[currentStage];
 
       Menu.hide();
@@ -732,6 +801,7 @@
       score = 0;
       boostActive = false;
       boostUntil = 0;
+      P2.boostUntil = 0;
       nextKonpeitoAt = 0;      // 最初のこんぺいとうは、ゲーム開始の直後に出る
       konpeitoSpawnCount = 0;
       shuffleBag();
@@ -811,30 +881,36 @@
     // ===== PCのキーボード操作 =====
     // 矢印キー または WASD で移動（スマホを大きく傾けたときと同じ速さ。変えたいときは KEY_TILT）。ステージ選択などは画面のボタンで。
     const KEY_TILT = 45;
-    const keysDown = new Set();
-    let keyX = 0;
-    let keyY = 0;
+    // 矢印キー = グループ 'A'、WASD = グループ 'B'。ひとりプレイは両方とも1P、ふたりプレイは A=1P / B=2P
+    const keysA = new Set();
+    const keysB = new Set();
     const KEY_MAP = {
-      ArrowLeft: 'L', a: 'L', ArrowRight: 'R', d: 'R', ArrowUp: 'U', w: 'U', ArrowDown: 'D', s: 'D'
+      ArrowLeft: ['A', 'L'], ArrowRight: ['A', 'R'], ArrowUp: ['A', 'U'], ArrowDown: ['A', 'D'],
+      a: ['B', 'L'], d: ['B', 'R'], w: ['B', 'U'], s: ['B', 'D']
     };
-    function refreshKeys() {
-      keyX = (keysDown.has('R') ? 1 : 0) - (keysDown.has('L') ? 1 : 0);
-      keyY = (keysDown.has('D') ? 1 : 0) - (keysDown.has('U') ? 1 : 0);
+    const keyVec = (set) => ({
+      x: (set.has('R') ? 1 : 0) - (set.has('L') ? 1 : 0),
+      y: (set.has('D') ? 1 : 0) - (set.has('U') ? 1 : 0)
+    });
+    // 1P と 2P それぞれのキー入力（-1 / 0 / 1）
+    function keyInputs() {
+      const a = keyVec(keysA), b = keyVec(keysB);
+      if (twoPlayer) return { k1: a, k2: b };
+      return { k1: { x: a.x || b.x, y: a.y || b.y }, k2: { x: 0, y: 0 } };
     }
+    function keyOf(e) { return KEY_MAP[e.key.length === 1 ? e.key.toLowerCase() : e.key]; }
     document.addEventListener('keydown', (e) => {
-      const k = KEY_MAP[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      const k = keyOf(e);
       if (!k) return;
       if (e.key.startsWith('Arrow') && gameState === 'playing') e.preventDefault();  // 画面のスクロール防止
-      keysDown.add(k);
-      refreshKeys();
+      (k[0] === 'A' ? keysA : keysB).add(k[1]);
     });
     document.addEventListener('keyup', (e) => {
-      const k = KEY_MAP[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      const k = keyOf(e);
       if (!k) return;
-      keysDown.delete(k);
-      refreshKeys();
+      (k[0] === 'A' ? keysA : keysB).delete(k[1]);
     });
-    window.addEventListener('blur', () => { keysDown.clear(); refreshKeys(); });
+    window.addEventListener('blur', () => { keysA.clear(); keysB.clear(); });
 
     // ===== 製作者用の隠しコマンド（無敵） =====
     // PC：キーボードで ↑↑↓↓←→←→ B A（コナミコマンド）で ON/OFF
@@ -910,6 +986,67 @@
       setTimeout(() => document.querySelectorAll('.confetti').forEach((e) => e.remove()), 6500);
     }
 
+    // プレイヤーがつかまった。ふたりプレイでは、その人だけ退場。全員つかまったらゲームオーバー（true を返す）
+    function catchPlayer(p) {
+      if (invincible) return false;
+      p.alive = false;
+      if (alivePlayers().length === 0) {
+        endGame(false);
+        return true;
+      }
+      p.el.style.display = 'none';
+      p.el.classList.remove('boosting');
+      showPop(p.x + 60, p.y + 20, `${p.id}P つかまった！`, 'pink');
+      startShake();
+      return false;
+    }
+
+    // 1人ぶんの移動と歩行アニメ（rawX/rawY は傾き。-は左/上）
+    function stepPlayer(p, rawX, rawY, nowT, dt, elapsed) {
+      p.boostActive = elapsed < p.boostUntil;
+      p.el.classList.toggle('boosting', p.boostActive);
+      const prevX = p.x;
+      const prevY = p.y;
+
+      // 1. スピード・操作感の補正設定
+      const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
+      const baseSpeed = 0.005;      // 通常時の移動スピード
+      // 2. デッドゾーン（微小な傾きをカットして勝手に動かないようにする）
+      if (Math.abs(rawX) < deadzone) rawX = 0;
+      if (Math.abs(rawY) < deadzone) rawY = 0;
+      // 3. ブースト中のスピード適用
+      const currentSpeed = p.boostActive ? (baseSpeed * BOOST_MULTIPLIER) : baseSpeed;
+      // 4. 速度を座標に加算して進み続ける
+      p.x += rawX * currentSpeed * SPEED_X;
+      p.y += rawY * currentSpeed * SPEED_Y;
+      p.x = Math.max(0, Math.min(window.innerWidth - 160, p.x));
+      p.y = Math.max(0, Math.min(window.innerHeight - 160, p.y));
+      p.el.style.left = p.x + 'px';
+      p.el.style.top = p.y + 'px';
+
+      // 左右の向き
+      const moveDelta = p.x - prevX;
+      if (moveDelta > 0.001) p.dir = 'right';
+      else if (moveDelta < -0.001) p.dir = 'left';
+
+      // 歩行アニメ：時間ベースで 4 コマ（右=1-4 / 左=5-8）を順番に回す
+      const w = p.walk;
+      const movedDistance = Math.abs(p.x - prevX) + Math.abs(p.y - prevY);
+      if (movedDistance > 0.05) {
+        w.lastMoveAt = nowT;
+        w.clock += dt * 1000;
+        const stepMs = p.boostActive ? 70 : 140;
+        while (w.clock >= stepMs) {
+          w.clock -= stepMs;
+          w.idx = (w.idx + 1) % 4;
+        }
+      } else if (nowT - w.lastMoveAt > 150) {
+        w.idx = 0;      // 少し止まってから立ち姿に戻す（入力の細かい途切れでコマが戻らないように）
+        w.clock = 0;
+      }
+      setWalkFrame(p, (p.dir === 'right' ? 1 : 5) + w.idx);
+    }
+
     function endGame(cleared) {
       if (!cleared && invincible) return;   // 製作者用：無敵中はやられない
       gameState = 'result';
@@ -922,9 +1059,16 @@
         const newBestTime = Menu.recordSurvival(survived);
         const newBestScore = Menu.recordScore(score);
 
-        resultTitle.textContent = cleared ? 'めいから逃げ切った！' : 'めいに捕まった。。。';
+        if (twoPlayer) {
+          const survivors = [P1, P2].filter((p) => p.alive);
+          resultTitle.textContent = !cleared ? 'ふたりとも捕まった。。。'
+            : (survivors.length === 2 ? 'ふたりで逃げ切った！' : `${survivors[0] ? survivors[0].id : 1}Pが逃げ切った！`);
+        } else {
+          resultTitle.textContent = cleared ? 'めいから逃げ切った！' : 'めいに捕まった。。。';
+        }
         resultSub.textContent =
           (cleared ? `クリアタイム: ${gameTimeNow().toFixed(1)}秒` : `生き残った時間: ${survived.toFixed(1)}秒`) +
+          ((twoPlayer && cleared && [P1, P2].filter((p) => p.alive).length === 1) ? '\n（もうひとりはつかまっちゃった…）' : '') +
           `\n${scoreLine}` +
           ((newBestTime || newBestScore) ? '\n🎉 ベスト記録を更新！' : '');
         btnRetry.textContent = 'もう一度';
@@ -995,71 +1139,38 @@
         activeBucketCount = Math.min(bc.max, bc.start + bc.add * Math.floor(elapsed / bc.every));
       }
 
-      // ブースト（ピンクのこんぺいとうをひろうと、BOOST_DURATION 秒だけ自動で入る）
-      boostActive = elapsed < boostUntil;
-      player.classList.toggle('boosting', boostActive);
-
-      let targetX = (window.innerWidth / 2) + (inputX * 5);
-      let targetY = (window.innerHeight / 2) + ((inputY - 30) * 5);
-
-      let smoothness = boostActive ? 0.3 : 0.02;
-
-      let prevX = posX;
-      let prevY = posY;
-
-      // --- 1. スピード・操作感の補正設定 ---
-      const deadzone = 3.0;        // スマホの微小な揺れを無視する範囲
-      const baseSpeed = 0.005;      // 通常時の移動スピード
-      const boostMultiplier = BOOST_MULTIPLIER; // ★ブースト時のスピード倍率（上の調整用の設定で変える）
-
-      // 2. 傾きの取得と持ち手の角度調整
-      let rawX = inputX;
-      let rawY = inputY - 30; // 縦の持ち方オフセット
-      // このスマホ自体の傾き（センサーが生きている間は、そちらを使う）
-      if (ownTilt && performance.now() - ownTiltAt < 1000) {
-        rawX = ownTilt.x;
-        rawY = ownTilt.y - 30;
+      // --- 移動（ブーストは、ピンクのこんぺいとうをひろった人だけに BOOST_DURATION 秒入る） ---
+      const kin = keyInputs();
+      if (P1.alive) {
+        let rawX = inputX;
+        let rawY = inputY - 30;   // 縦の持ち方オフセット
+        // このスマホ自体の傾き（センサーが生きている間は、そちらを使う）
+        if (ownTilt && performance.now() - ownTiltAt < 1000) {
+          rawX = ownTilt.x;
+          rawY = ownTilt.y - 30;
+        }
+        // PCのキーボード操作。押している間はスマホの傾きより優先
+        if (kin.k1.x !== 0) rawX = kin.k1.x * KEY_TILT;
+        if (kin.k1.y !== 0) rawY = kin.k1.y * KEY_TILT;
+        stepPlayer(P1, rawX, rawY, nowT, dt, elapsed);
       }
-      // PCのキーボード操作（矢印キー / WASD）。押している間はスマホの傾きより優先
-      if (keyX !== 0) rawX = keyX * KEY_TILT;
-      if (keyY !== 0) rawY = keyY * KEY_TILT;
-
-      // 3. デッドゾーン（微小な傾きをカットして勝手に動かないようにする）
-      if (Math.abs(rawX) < deadzone) rawX = 0;
-      if (Math.abs(rawY) < deadzone) rawY = 0;
-
-      let moveX = rawX;
-      let moveY = rawY;
-
-      //4.傾けた時の最大スピードの制御
-      const maxspeed = 10.0;
-      if (Math.abs(rawX) >  maxspeed) rawX = maxspeed;
-      if (Math.abs(rawY) >  maxspeed) rawY = maxspeed;
-
-      // 5. ブースト中のスピード適用
-      let currentSpeed = boostActive ? (baseSpeed * boostMultiplier) : baseSpeed;
-
-      // 6. 速度を座標に加算して進み続ける処理
-      posX += moveX * currentSpeed * SPEED_X;
-      posY += moveY * currentSpeed * SPEED_Y;
-
-      posX = Math.max(0, Math.min(window.innerWidth - 160, posX));
-      posY = Math.max(0, Math.min(window.innerHeight - 160, posY));
-
-      player.style.left = posX + 'px';
-      player.style.top = posY + 'px';
+      if (twoPlayer && P2.alive) {
+        let rawX = P2.inputX;
+        let rawY = P2.inputY - 30;
+        if (kin.k2.x !== 0) rawX = kin.k2.x * KEY_TILT;
+        if (kin.k2.y !== 0) rawY = kin.k2.y * KEY_TILT;
+        stepPlayer(P2, rawX, rawY, nowT, dt, elapsed);
+      }
 
       // --- こんぺいとうの出現・ひろう処理 ---
       updateKonpeito(elapsed);
 
       // --- 影の拡大とバケツの出現処理 ---
       for (let i = 0; i < activeBucketCount; i++) {
-        if (stepBucket(buckets[i])) {
-          endGame(false);
-          return;
-        }
+        const hit = stepBucket(buckets[i]);
+        if (hit && catchPlayer(hit)) return;
       }
-      // --- ステージ2：めいの両手 ---
+      // --- ステージ2・3：めいの両手 ---
       // ステージ3：30秒で手が加わり、50秒（残り10秒）から攻撃の間隔が2倍の速さに
       if (cfg.hands && !handsOn && currentMode === 'normal' && elapsed >= cfg.handsFrom) {
         Hands.start();
@@ -1072,37 +1183,15 @@
         showBanner('ラストスパート！ 手の攻撃が はやくなるよ！');
       }
       if (handsOn) {
-        if (Hands.update(dt, window.innerWidth, window.innerHeight, posX + 80, posY + 80, PLAYER_HIT_R)) {
-          endGame(false);
-          return;
+        const al = alivePlayers();
+        const hits = Hands.updateMulti(dt, window.innerWidth, window.innerHeight, al.map((p) => ({ x: p.x + 80, y: p.y + 80 })), PLAYER_HIT_R);
+        for (const i of hits) {
+          if (catchPlayer(al[i])) return;
         }
       }
 
       // --- タイマー表示 ---
       updateInfo(elapsed);
-
-      // --- 左右の向きと歩行アニメーション制御 ---
-      let moveDelta = posX - prevX;
-      if (Math.abs(moveDelta) > 0.001) {
-        if (moveDelta > 0) currentDirection = 'right';
-        else if (moveDelta < 0) currentDirection = 'left';
-      }
-
-      // 歩行アニメ：時間ベースで 4 コマ（右=walk1-4 / 左=walk5-8）を順番に回す
-      const movedDistance = Math.abs(posX - prevX) + Math.abs(posY - prevY);
-      if (movedDistance > 0.05) {
-        lastMoveAt = nowT;
-        walkClock += dt * 1000;
-        const stepMs = boostActive ? 70 : 140;
-        while (walkClock >= stepMs) {
-          walkClock -= stepMs;
-          walkIdx = (walkIdx + 1) % 4;
-        }
-      } else if (nowT - lastMoveAt > 150) {
-        walkIdx = 0;      // 少し止まってから立ち姿に戻す（入力の細かい途切れでコマが戻らないように）
-        walkClock = 0;
-      }
-      setWalkFrame((currentDirection === 'right' ? 1 : 5) + walkIdx);
     }
 
     // 待機画面を初期化して開始（スタートボタンが押されたら、練習なら説明 → ゲーム開始）

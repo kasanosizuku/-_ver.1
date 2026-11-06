@@ -185,7 +185,7 @@ const Hands = (() => {
     return { vis: lerp(PEEK, RECOIL, easeOut((p - 0.8) / 0.2)), dx: 0, dy: 0 };
   }
 
-  function step(px, py, pr) {
+  function step(targets, pr) {
     const p = clamp(t / duration(phase), 0, 1);
     const retL = -30;                           // 手が完全にかくれている位置（指先）
     const retR = W + 30;
@@ -241,24 +241,36 @@ const Hands = (() => {
     rightEl.style.transform = `scaleX(-1) rotate(${-phi}deg)`;
 
     // 当たり判定：手の高さ（指先 〜 手のひらの付け根）の中で、指先より内がわに入ると当たり
-    const inBand = (L) => py > Math.min(L.tipY, L.heelY) - 8 - pr * 0.6 &&
-                          py < Math.max(L.tipY, L.heelY) + 24 + pr * 0.6;
-    if (tipL > 0 && inBand(LL) && px - pr * 0.6 < tipL) return true;
-    if (tipR < W && inBand(LR) && px + pr * 0.6 > tipR) return true;
-    return false;
+    const hits = [];
+    targets.forEach((tg, i) => {
+      const px = tg.x, py = tg.y;
+      const inBand = (L) => py > Math.min(L.tipY, L.heelY) - 8 - pr * 0.6 &&
+                            py < Math.max(L.tipY, L.heelY) + 24 + pr * 0.6;
+      if ((tipL > 0 && inBand(LL) && px - pr * 0.6 < tipL) ||
+          (tipR < W && inBand(LR) && px + pr * 0.6 > tipR)) hits.push(i);
+    });
+    return hits;
   }
 
-  function update(dt, w, h, px, py, pr) {
-    if (!active) return false;
+  // 複数のプレイヤー用。targets は [{x, y}]（生きているプレイヤーの中心）。当たった targets の番号の配列を返す。
+  // ねらう相手は、はさみうちの1回ごとに順番に変わる（ふたりプレイのとき）
+  function updateMulti(dt, w, h, targets, pr) {
+    if (!active) return [];
     W = w;
     H = h;
     t += dt;
+    const aim = () => (targets.length ? targets[cycle % targets.length].y : H / 2);
     let guard = 0;
     while (t >= duration(phase) && guard++ < 6) {
       t -= duration(phase);
-      advance(py);
+      advance(aim());
     }
-    return step(px, py, pr);
+    return step(targets, pr);
+  }
+
+  // ひとり用（これまで通り）。当たったら true
+  function update(dt, w, h, px, py, pr) {
+    return updateMulti(dt, w, h, [{ x: px, y: py }], pr).length > 0;
   }
 
   function start() {
@@ -282,6 +294,7 @@ const Hands = (() => {
     stop,
     setRush,
     update,
+    updateMulti,
     setGapBucketHandler(fn) { gapHandler = fn; },
     figureHTML,                         // 説明画面で手の絵を置くのに使う
     PHI_REACH,

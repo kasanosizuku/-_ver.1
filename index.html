@@ -23,6 +23,25 @@
       cursor: pointer;
       margin: 10px;
     }
+    .who {
+      margin: 6px 0 0;
+      font-size: 15px;
+      color: #ccc;
+    }
+    .who button {
+      font-size: 18px;
+      padding: 10px 22px;
+      margin: 6px;
+      background-color: #444;
+      border: 3px solid transparent;
+    }
+    .who button.selected {
+      background-color: #ff4081;
+      border-color: #fff;
+    }
+    .who button.p2.selected {
+      background-color: #ff80ab;
+    }
     #status {
       margin-top: 15px;
       font-size: 16px;
@@ -39,10 +58,15 @@
 <body>
 
   <h1>君のまっくろくろすけ</h1>
-  <button id="start-btn">ゲームスタート！</button>
+  <div class="who">
+    あなたは？<br>
+    <button id="p1-btn" class="selected">1P</button>
+    <button id="p2-btn" class="p2">2P（リボン）</button>
+  </div>
+  <button id="start-btn">まっくろくろすけと同期</button>
   <div id="status">未接続</div>
   <!-- ブーストは、ゲーム画面でこんぺいとう（ピンク）をひろうと自動で入ります -->
-  <div id="hint">スマホを傾けて動かします。<br>ピンクのこんぺいとうをひろうと、自動でブーストします。</div>
+  <div id="hint">1Pか2Pを選んで「まっくろくろすけと同期」を押し、スマホを傾けて動かします。<br>ピンクのこんぺいとうをひろうと、自動でブーストします。</div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -65,6 +89,18 @@
     const startBtn = document.getElementById('start-btn');
     const statusDiv = document.getElementById('status');
 
+    // 1P / 2P の選択（URL に ?p=2 を付けても選べる）。送り先は player1/move か player2/move
+    let playerNo = /[?&]p=2\b/.test(location.search) ? 2 : 1;
+    const p1Btn = document.getElementById('p1-btn');
+    const p2Btn = document.getElementById('p2-btn');
+    function showPlayer() {
+      p1Btn.classList.toggle('selected', playerNo === 1);
+      p2Btn.classList.toggle('selected', playerNo === 2);
+    }
+    p1Btn.addEventListener('click', () => { playerNo = 1; showPlayer(); });
+    p2Btn.addEventListener('click', () => { playerNo = 2; showPlayer(); });
+    showPlayer();
+
     let currentGamma = 0;
     let currentBeta = 0;
 
@@ -74,7 +110,7 @@
           const permissionState = await DeviceOrientationEvent.requestPermission();
           if (permissionState === 'granted') {
             window.addEventListener('deviceorientation', handleOrientation);
-            statusDiv.textContent = "送信中...";
+            statusDiv.textContent = "同期中...";
           } else {
             alert("センサーの使用が拒否されました");
           }
@@ -83,7 +119,7 @@
         }
       } else {
         window.addEventListener('deviceorientation', handleOrientation);
-        statusDiv.textContent = "送信中...";
+        statusDiv.textContent = "同期中...";
       }
     }
 
@@ -95,7 +131,7 @@
 
     // 傾きだけを送る（ブーストの情報は、もう送らない）
     function sendData() {
-      database.ref('player1/move').set({
+      database.ref('player' + playerNo + '/move').set({
         x: currentGamma,
         y: currentBeta
       });

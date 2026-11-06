@@ -47,7 +47,7 @@
 }
 
 /* ブースト中はキャラがピンクに光る */
-#player.boosting {
+#player.boosting, #player2.boosting {
   filter: drop-shadow(0 0 8px rgba(255, 170, 200, 0.95)) drop-shadow(0 0 20px rgba(255, 210, 230, 0.9));
 }
 

@@ -21,19 +21,21 @@ const Menu = (() => {
   const startBtn = document.getElementById('btn-start');
   const modeBtns = document.querySelectorAll('[data-mode]');
   const stageBtns = document.querySelectorAll('[data-stage]');
+  const playerBtns = document.querySelectorAll('[data-players]');
 
   let mode = 'normal';
   let stage = 1;
+  let players = 1;        // 遊ぶ人数（1 または 2）
   let gameTime = 30;
   let gameTimes = null;   // ステージごとの制限時間 { 1: 30, 2: 30, 3: 60 }
   function gameTimeNow() { return (gameTimes && gameTimes[stage]) || gameTime; }
   let onStart = null;
-  let lastInputTime = 0;
+  const lastInputTimes = { 1: 0, 2: 0 };   // 1P・2P それぞれのコントローラーの最後の入力
   let dbConnected = false;
 
   // ----- ベスト記録（通常モードの生存時間・ステージごとに保存） -----
   function bestKey() {
-    return `makkuro_best_stage${stage}`;
+    return `makkuro_best_stage${stage}${players === 2 ? '_2p' : ''}`;
   }
 
   function loadBest() {
@@ -55,7 +57,7 @@ const Menu = (() => {
 
   // ----- ベストスコア（こんぺいとうの数・ステージごとに保存） -----
   function scoreKey() {
-    return `makkuro_bestscore_stage${stage}`;
+    return `makkuro_bestscore_stage${stage}${players === 2 ? '_2p' : ''}`;
   }
 
   function loadBestScore() {
@@ -79,7 +81,7 @@ const Menu = (() => {
     const best = loadBest();
     const bestScore = loadBestScore();
     if ((best === null || isNaN(best)) && (bestScore === null || isNaN(bestScore))) {
-      bestEl.textContent = 'ベスト記録（通常モード）: まだ記録がありません';
+      bestEl.textContent = `ベスト記録（通常モード${players === 2 ? '・ふたり' : ''}）: まだ記録がありません`;
       return;
     }
     let timeText = '—';
@@ -87,7 +89,7 @@ const Menu = (() => {
       timeText = (best >= gameTimeNow()) ? `${gameTimeNow().toFixed(1)}秒（クリア！）` : `${best.toFixed(1)}秒`;
     }
     const scoreText = (bestScore === null || isNaN(bestScore)) ? 0 : bestScore;
-    bestEl.textContent = `ベスト記録（通常モード）: ${timeText} ／ こんぺいとう ${scoreText}こ`;
+    bestEl.textContent = `ベスト記録（通常モード${players === 2 ? '・ふたり' : ''}）: ${timeText} ／ こんぺいとう ${scoreText}こ`;
   }
 
   function recordSurvival(sec) {
@@ -111,7 +113,13 @@ const Menu = (() => {
     if (!dbConnected) {
       statusEl.textContent = '🔴 サーバーに接続できていません';
       statusEl.className = 'ng';
-    } else if (lastInputTime > 0 && performance.now() - lastInputTime < INPUT_ACTIVE_MS) {
+    } else if (players === 2) {
+      const now = performance.now();
+      const on = (id) => lastInputTimes[id] > 0 && now - lastInputTimes[id] < INPUT_ACTIVE_MS;
+      const mark = (id) => (on(id) ? `🟢 ${id}P 受信中` : `🟡 ${id}P 入力待ち`);
+      statusEl.textContent = `コントローラー: ${mark(1)} ／ ${mark(2)}`;
+      statusEl.className = (on(1) && on(2)) ? 'ok' : 'wait';
+    } else if (lastInputTimes[1] > 0 && performance.now() - lastInputTimes[1] < INPUT_ACTIVE_MS) {
       statusEl.textContent = '🟢 コントローラー: 受信中';
       statusEl.className = 'ok';
     } else {
@@ -120,8 +128,8 @@ const Menu = (() => {
     }
   }
 
-  function notifyInput() {
-    lastInputTime = performance.now();
+  function notifyInput(id) {
+    lastInputTimes[id === 2 ? 2 : 1] = performance.now();
   }
 
   function setConnected(connected) {
@@ -139,6 +147,15 @@ const Menu = (() => {
     });
   });
 
+  playerBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      players = parseInt(btn.dataset.players, 10);
+      playerBtns.forEach((b) => b.classList.toggle('selected', b === btn));
+      showBest();
+      updateStatus();
+    });
+  });
+
   stageBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       stage = parseInt(btn.dataset.stage, 10);
@@ -148,7 +165,7 @@ const Menu = (() => {
   });
 
   startBtn.addEventListener('click', () => {
-    if (onStart) onStart({ mode: mode, stage: stage });
+    if (onStart) onStart({ mode: mode, stage: stage, players: players });
   });
 
   // ----- 外から使う窓口 -----
@@ -177,6 +194,7 @@ const Menu = (() => {
     recordSurvival,
     recordScore,
     get mode() { return mode; },
-    get stage() { return stage; }
+    get stage() { return stage; },
+    get players() { return players; }
   };
 })();
