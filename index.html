@@ -86,6 +86,68 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // ===== 接続の管理（admin.html から見える・解除される） =====
+    // 端末ごとの ID を作り、sessions/<ID> に「いま接続している」ことを書く。
+    // 管理画面が control/epoch を書き換える（一括解除）か、control/kicked/<ID> を書く（個別解除）と、この接続は切れる。
+    const TS = (firebase.database.ServerValue || {}).TIMESTAMP || Date.now();
+    const deviceId = (() => {
+      let v = null;
+      try { v = localStorage.getItem('makkuro_device_id'); } catch (e) { /* 使えない環境 */ }
+      if (!v) {
+        v = Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+        try { localStorage.setItem('makkuro_device_id', v); } catch (e) { /* 保存できなくても動く */ }
+      }
+      return v;
+    })();
+    let connected = false;
+    let epochAtJoin;                 // 接続したときの control/epoch（あとで変わったら、一括解除された合図）
+    let lastBeat = 0;
+    let sessionRefs = null;
+
+    function joinSession() {
+      leaveSession(false);
+      const me = database.ref('sessions/' + deviceId);
+      const epochRef = database.ref('control/epoch');
+      const kickedRef = database.ref('control/kicked/' + deviceId);
+      me.set({ player: playerNo, joinedAt: TS, lastInput: TS, ua: navigator.userAgent.slice(0, 90) });
+      if (me.onDisconnect) me.onDisconnect().remove();     // 画面を閉じたら、自動で一覧から消える
+      kickedRef.remove();                                    // 以前の「個別解除」の印を消してから見はじめる
+      epochAtJoin = undefined;
+      let first = true;
+      epochRef.on('value', (snap) => {
+        const v = snap.val();
+        if (first) { first = false; epochAtJoin = v; return; }
+        if (v !== epochAtJoin) forceDisconnect('管理者によって、すべての接続が解除されました。');
+      });
+      kickedRef.on('value', (snap) => {
+        if (snap.val()) forceDisconnect('管理者によって、この接続が解除されました。');
+      });
+      sessionRefs = { me, epochRef, kickedRef };
+      connected = true;
+    }
+
+    // 接続をやめる（自分でも、管理者に言われても使う）。tellDb が true なら、一覧からも消す
+    function leaveSession(tellDb) {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      clearTimeout(noEventTimer);
+      if (sessionRefs) {
+        sessionRefs.epochRef.off('value');
+        sessionRefs.kickedRef.off('value');
+        if (tellDb) sessionRefs.me.remove();
+        sessionRefs = null;
+      }
+      connected = false;
+    }
+
+    // 管理者による強制解除：傾きの送信をやめて、キャラが止まるように中立の値を送る
+    function forceDisconnect(msg) {
+      database.ref('player' + playerNo + '/move').set({ x: 0, y: 30 });
+      leaveSession(true);
+      gotEvent = false;
+      statusDiv.style.color = '#ff6e6e';
+      statusDiv.innerHTML = msg + '<br>もう一度つなぐときは、「まっくろくろすけと同期」を押してください。';
+    }
+
     const startBtn = document.getElementById('start-btn');
     const statusDiv = document.getElementById('status');
 
@@ -97,33 +159,72 @@
       p1Btn.classList.toggle('selected', playerNo === 1);
       p2Btn.classList.toggle('selected', playerNo === 2);
     }
-    p1Btn.addEventListener('click', () => { playerNo = 1; showPlayer(); });
-    p2Btn.addEventListener('click', () => { playerNo = 2; showPlayer(); });
+    function changePlayer(n) {
+      playerNo = n;
+      showPlayer();
+      if (connected && sessionRefs) sessionRefs.me.update({ player: n });   // つないだまま切り替えたら、管理画面にも反映
+    }
+    p1Btn.addEventListener('click', () => changePlayer(1));
+    p2Btn.addEventListener('click', () => changePlayer(2));
     showPlayer();
 
     let currentGamma = 0;
     let currentBeta = 0;
 
+    let gotEvent = false;
+    let noEventTimer = null;
+
+    // センサーが使えないときの案内（画面に出す。alert は使わない）
+    function showSensorHelp(msg) {
+      statusDiv.style.color = '#ffab40';
+      statusDiv.innerHTML = msg;
+    }
+
+    function listenOrientation() {
+      try { joinSession(); } catch (e) { console.error(e); }   // 管理画面への登録に失敗しても、操作はできるようにする
+      window.addEventListener('deviceorientation', handleOrientation);
+      statusDiv.style.color = '#00e676';
+      statusDiv.textContent = playerNo + "Pとして同期中...";
+      // 2秒たっても傾きが届かないときは、案内を出す
+      clearTimeout(noEventTimer);
+      noEventTimer = setTimeout(() => {
+        if (!gotEvent) {
+          showSensorHelp('傾きが届いていません。<br>スマホの「画面の向きのロック」をオフにして、このページを開き直してください。<br>（LINEなどのアプリ内ブラウザではなく、Safari / Chrome で開いてください）');
+        }
+      }, 2000);
+    }
+
     async function startSensor() {
+      if (!window.isSecureContext) {
+        showSensorHelp('https:// のページで開いてください（http:// ではセンサーが使えません）。');
+        return;
+      }
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const permissionState = await DeviceOrientationEvent.requestPermission();
           if (permissionState === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation);
-            statusDiv.textContent = "同期中...";
+            listenOrientation();
           } else {
-            alert("センサーの使用が拒否されました");
+            // iPhone は、一度拒否すると、Safari を完全に終了するまで同じ答えが続く
+            showSensorHelp('センサーの使用が拒否されました。<br>① Safari を完全に終了（アプリ切り替えで上にスワイプ）<br>② もう一度このページを開く<br>③ 「同期」を押して、出てきた確認で「許可」を選ぶ<br>それでもだめなら 設定 → Safari → 詳細 → Webサイトデータ で、このサイトのデータを消してください。');
           }
         } catch (error) {
           console.error(error);
+          showSensorHelp('センサーの許可を求められませんでした。<br>Safari で開き直して、もう一度「同期」を押してください。');
         }
       } else {
-        window.addEventListener('deviceorientation', handleOrientation);
-        statusDiv.textContent = "同期中...";
+        listenOrientation();
       }
     }
 
     function handleOrientation(event) {
+      if (event.gamma === null || event.beta === null) return;   // センサーの値が入っていないイベントは無視
+      gotEvent = true;
+      const now = Date.now();
+      if (connected && sessionRefs && now - lastBeat > 1000) {     // 1秒に1回、「入力が来ている」ことを管理画面に知らせる
+        lastBeat = now;
+        sessionRefs.me.update({ lastInput: TS });
+      }
       currentGamma = event.gamma || 0;
       currentBeta = event.beta || 0;
       sendData();

@@ -522,6 +522,19 @@
       }
     });
 
+    // 管理画面（admin.html）で「すべての接続を一括解除」されたら、キャラが止まるように入力を中立に戻す
+    let epochSeen;
+    let epochFirst = true;
+    database.ref('control/epoch').on('value', (snapshot) => {
+      const v = snapshot.val();
+      if (epochFirst) { epochFirst = false; epochSeen = v; return; }
+      if (v !== epochSeen) {
+        epochSeen = v;
+        inputX = 0; inputY = 30;
+        P2.inputX = 0; P2.inputY = 30;
+      }
+    });
+
     // 2P のコントローラー（index.html で「2P」を選んだスマホ）
     let firstSnapshot2 = true;
     database.ref('player2/move').on('value', (snapshot) => {
