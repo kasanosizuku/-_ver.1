@@ -36,7 +36,10 @@ const Hands = (() => {
   const FIRST_DELAY = 1.5;                 // ゲーム開始から最初の攻撃までの秒数
 
   // 各段階の長さ（秒）。pinchWarn は予備動作の長さ（のぞく20%・ふるえる60%・引く20%）
-  const T = { pinchWarn: 1.7, pinchIn: 0.25, pinchHold: 0.60, pinchOut: 0.45, rest: 0.9 };
+  const T_NORMAL = { pinchWarn: 1.7, pinchIn: 0.25, pinchHold: 0.60, pinchOut: 0.45, rest: 0.9 };
+  // ラストスパート：手の攻撃の間隔が約2倍の速さ（1サイクル 3.9秒 → 約2.0秒）
+  const T_RUSH = { pinchWarn: 1.0, pinchIn: 0.20, pinchHold: 0.45, pinchOut: 0.30, rest: 0.05 };
+  let T = T_NORMAL;
   const ORDER = ['pinchWarn', 'pinchIn', 'pinchHold', 'pinchOut', 'rest'];
 
   const rad = (d) => d * Math.PI / 180;
@@ -124,6 +127,11 @@ const Hands = (() => {
 
   function duration(name) {
     return name === 'wait' ? FIRST_DELAY : T[name];
+  }
+
+  // ラストスパート切り替え（true で攻撃の間隔が約半分に）
+  function setRush(on) {
+    T = on ? T_RUSH : T_NORMAL;
   }
 
   function hideHands() {
@@ -259,6 +267,7 @@ const Hands = (() => {
     t = 0;
     cycle = 0;
     gap = false;
+    T = T_NORMAL;
     hideHands();
   }
 
@@ -271,6 +280,7 @@ const Hands = (() => {
   return {
     start,
     stop,
+    setRush,
     update,
     setGapBucketHandler(fn) { gapHandler = fn; },
     figureHTML,                         // 説明画面で手の絵を置くのに使う

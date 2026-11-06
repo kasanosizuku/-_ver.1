@@ -218,6 +218,17 @@
       100% { transform: translate3d(var(--dx), 110vh, 0) rotate(var(--rot)) rotateY(720deg); }
     }
     #result-buttons { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
+    .btn-row { flex-wrap: wrap; }
+    .choice { min-width: 120px; }
+    /* ステージ3：途中で出るお知らせ */
+    #stage-banner {
+      position: fixed; top: 22%; left: 50%; transform: translate(-50%, -10px);
+      max-width: 88vw; box-sizing: border-box; text-align: center;
+      background: rgba(251, 245, 227, 0.96); border: 3px solid #8a6a43; border-radius: 18px;
+      padding: 10px 22px; font-size: 24px; font-weight: bold; color: #a23b2a;
+      z-index: 150; pointer-events: none; opacity: 0; transition: opacity .25s, transform .25s;
+    }
+    #stage-banner.show { opacity: 1; transform: translate(-50%, 0); }
     /* ===== スマホ向けの表示調整 ===== */
     #result-screen { box-sizing: border-box; width: min(520px, 92vw); max-height: 94vh; overflow-y: auto; }
     #result-buttons { flex-wrap: wrap; }
@@ -257,7 +268,7 @@
       <div class="section">
         <div class="section-title">モード</div>
         <div class="btn-row">
-          <button class="choice selected" data-mode="normal">通常モード<small>30秒間、逃げ切れ！</small></button>
+          <button class="choice selected" data-mode="normal">通常モード<small>制限時間まで逃げ切れ！</small></button>
           <button class="choice" data-mode="practice">練習モード<small>時間無制限・バケツ数固定</small></button>
         </div>
       </div>
@@ -267,6 +278,7 @@
         <div class="btn-row">
           <button class="choice selected" data-stage="1">ステージ1<small>飛び出すバケツ</small></button>
           <button class="choice" data-stage="2">ステージ2<small>めいの両手がはさみうち！</small></button>
+          <button class="choice" data-stage="3">ステージ3<small>60秒！後半はめいの手も</small></button>
         </div>
       </div>
 
@@ -276,7 +288,7 @@
         ・<b>ピンクのこんぺいとう</b>をひろうと、少しの間ブースト（スピード2倍）！<br>
         ・<b>きいろのこんぺいとう</b>をひろうと、スコアが+1こ。<br>
         ・<b>赤い影</b>が大きくなったらバケツが来る合図！ めいの手は、<b>ふるえたら</b>おそってくる合図！ その場所から離れよう。<br>
-        ・当たるとゲームオーバー。30秒逃げ切ればクリアです。
+        ・当たるとゲームオーバー。制限時間（ステージ1・2は30秒、ステージ3は60秒）まで逃げ切ればクリアです。
       </div>
 
       <div id="controller-status" class="wait">コントローラー: 確認中...</div>
@@ -321,7 +333,7 @@
     const database = firebase.database();
 
     // ===== 調整用の設定 =====
-    const GAME_TIME = 30;            // 制限時間（秒）。通常モードの両ステージで共通
+    const GAME_TIME = 30;            // 制限時間の標準値（秒）。ステージごとの値は STAGE_CONFIG の time
     const COUNTDOWN_SECONDS = 3;     // スタート前のカウントダウン（秒）
     const PLAYER_HIT_R = 38;         // めいの手に対するプレイヤーの当たり半径（バケツの判定は別）
 
@@ -338,10 +350,17 @@
     //   buckets: 通常モードのバケツ数  start から、every 秒ごとに add ずつ増えて max まで
     //   practiceBuckets: 練習モードのバケツ数（最初から固定）
     //   hands: めいの手が出るか
+    //   time: 通常モードの制限時間（秒）
+    //   handsFrom: 通常モードで、めいの手が出はじめる秒数（省略すると最初から。hands が false なら手なし）
+    //   handsRushFrom: この秒数から手の攻撃の間隔が約2倍の速さになる（ラストスパート。省略可）
     const STAGE_CONFIG = {
-      1: { buckets: { start: 3, add: 6, every: 10, max: 15 }, practiceBuckets: 6, hands: false },
-      2: { buckets: { start: 2, add: 2, every: 10, max: 6 },  practiceBuckets: 3, hands: true }
+      1: { time: 30, buckets: { start: 3, add: 6, every: 10, max: 15 }, practiceBuckets: 6, hands: false },
+      2: { time: 30, buckets: { start: 2, add: 2, every: 10, max: 6 },  practiceBuckets: 3, hands: true },
+      // ステージ3：最初の30秒はバケツだけ。30秒から手が加わり、残り10秒（50秒〜）は手の間隔が2倍の速さ
+      3: { time: 60, buckets: { start: 3, add: 2, every: 10, max: 11 }, practiceBuckets: 4, hands: true,
+           handsFrom: 30, handsRushFrom: 50 }
     };
+    function gameTimeNow() { return STAGE_CONFIG[currentStage].time; }
 
     const player = document.getElementById('player');
     const info = document.getElementById('info');
@@ -387,6 +406,23 @@
     // 移動速度の倍率（横=ゆっくり / 縦=速く。以前は 横10・縦5）
     const SPEED_X = 7;
     const SPEED_Y = 8;
+    let handsOn = false;       // めいの手が動いているか（ステージ3は途中から）
+    let handsRush = false;     // ラストスパート中か
+    let bannerTimer = null;
+    function showBanner(text) {
+      let el = document.getElementById('stage-banner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'stage-banner';
+        document.body.appendChild(el);
+      }
+      el.textContent = text;
+      el.classList.remove('show');
+      void el.offsetWidth;
+      el.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
     let walkClock = 0;
     let walkIdx = 0;
     let lastMoveAt = 0;
@@ -462,7 +498,7 @@
       const boostText = boostActive ? `✨ 残り${Math.max(0, boostUntil - elapsed).toFixed(1)}秒` : 'OFF';
       const common = `スコア: ${score} | バケツ数: ${activeBucketCount} | ブースト: ${boostText}`;
       if (currentMode === 'normal') {
-        const timeLeft = Math.max(0, Math.ceil(GAME_TIME - elapsed));
+        const timeLeft = Math.max(0, Math.ceil(gameTimeNow() - elapsed));
         info.textContent = `ステージ${currentStage} | 残り時間: ${formatTime(timeLeft)} | ${common}`;
       } else {
         info.textContent = `練習モード（ステージ${currentStage}） | 経過時間: ${formatTime(elapsed)} | ${common}`;
@@ -718,7 +754,9 @@
           calibrateOwnTilt();   // いまの持ち方を「まんなか」にする
           gameState = 'playing';
           playStartTime = performance.now();
-          if (cfg.hands) Hands.start();
+          handsOn = false;
+          handsRush = false;
+          if (cfg.hands && (currentMode === 'practice' || cfg.handsFrom === undefined)) { Hands.start(); handsOn = true; }
           setTimeout(() => {
             if (gameState === 'playing') countdownEl.style.display = 'none';
           }, 700);
@@ -829,7 +867,8 @@
       { min: 0, name: '見習いくろすけ',     note: 'まずはこんぺいとうを探してみよう' },
       { min: 1, name: 'おつかいくろすけ',   note: 'こんぺいとうをゲット！' },
       { min: 2, name: 'こんぺいとう名人',   note: 'いい集めっぷり！' },
-      { min: 3, name: 'くろすけの親分',     note: 'こんぺいとうを集めきった！' }
+      { min: 3, name: 'くろすけの親分',     note: 'こんぺいとうを集めきった！' },
+      { min: 6, name: 'まっくろ伝説',       note: '60秒の長丁場で大集め！すごい！' }
     ];
     function rankFor(n) {
       let r = RANKS[0];
@@ -841,6 +880,9 @@
     let resultTimer = null;
     function clearEffects() {
       clearTimeout(resultTimer);
+      clearTimeout(bannerTimer);
+      const bn = document.getElementById('stage-banner');
+      if (bn) bn.classList.remove('show');
       document.body.classList.remove('shake');
       document.querySelectorAll('.confetti').forEach((e) => e.remove());
     }
@@ -876,13 +918,13 @@
       const scoreLine = `こんぺいとうスコア: ${score}こ`;
 
       if (currentMode === 'normal') {
-        const survived = Math.min(elapsed, GAME_TIME);
+        const survived = Math.min(elapsed, gameTimeNow());
         const newBestTime = Menu.recordSurvival(survived);
         const newBestScore = Menu.recordScore(score);
 
         resultTitle.textContent = cleared ? 'めいから逃げ切った！' : 'めいに捕まった。。。';
         resultSub.textContent =
-          (cleared ? `クリアタイム: ${GAME_TIME.toFixed(1)}秒` : `生き残った時間: ${survived.toFixed(1)}秒`) +
+          (cleared ? `クリアタイム: ${gameTimeNow().toFixed(1)}秒` : `生き残った時間: ${survived.toFixed(1)}秒`) +
           `\n${scoreLine}` +
           ((newBestTime || newBestScore) ? '\n🎉 ベスト記録を更新！' : '');
         btnRetry.textContent = 'もう一度';
@@ -944,7 +986,7 @@
       const cfg = STAGE_CONFIG[currentStage];
 
       if (currentMode === 'normal') {
-        if (elapsed >= GAME_TIME) {
+        if (elapsed >= gameTimeNow()) {
           endGame(true);
           return;
         }
@@ -1018,7 +1060,18 @@
         }
       }
       // --- ステージ2：めいの両手 ---
-      if (cfg.hands) {
+      // ステージ3：30秒で手が加わり、50秒（残り10秒）から攻撃の間隔が2倍の速さに
+      if (cfg.hands && !handsOn && currentMode === 'normal' && elapsed >= cfg.handsFrom) {
+        Hands.start();
+        handsOn = true;
+        showBanner('めいの手が出てきた！');
+      }
+      if (handsOn && !handsRush && currentMode === 'normal' && cfg.handsRushFrom !== undefined && elapsed >= cfg.handsRushFrom) {
+        handsRush = true;
+        Hands.setRush(true);
+        showBanner('ラストスパート！ 手の攻撃が はやくなるよ！');
+      }
+      if (handsOn) {
         if (Hands.update(dt, window.innerWidth, window.innerHeight, posX + 80, posY + 80, PLAYER_HIT_R)) {
           endGame(false);
           return;
@@ -1055,6 +1108,7 @@
     // 待機画面を初期化して開始（スタートボタンが押されたら、練習なら説明 → ゲーム開始）
     Menu.init({
       gameTime: GAME_TIME,
+      gameTimes: { 1: STAGE_CONFIG[1].time, 2: STAGE_CONFIG[2].time, 3: STAGE_CONFIG[3].time },
       onStart: ({ mode, stage }) => {
         if (gameState !== 'menu') return;
         practiceHitCount = 0; // 練習モードを始めるたびにチュートリアルを最初から

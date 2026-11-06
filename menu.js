@@ -25,6 +25,8 @@ const Menu = (() => {
   let mode = 'normal';
   let stage = 1;
   let gameTime = 30;
+  let gameTimes = null;   // ステージごとの制限時間 { 1: 30, 2: 30, 3: 60 }
+  function gameTimeNow() { return (gameTimes && gameTimes[stage]) || gameTime; }
   let onStart = null;
   let lastInputTime = 0;
   let dbConnected = false;
@@ -82,7 +84,7 @@ const Menu = (() => {
     }
     let timeText = '—';
     if (best !== null && !isNaN(best)) {
-      timeText = (best >= gameTime) ? `${gameTime.toFixed(1)}秒（クリア！）` : `${best.toFixed(1)}秒`;
+      timeText = (best >= gameTimeNow()) ? `${gameTimeNow().toFixed(1)}秒（クリア！）` : `${best.toFixed(1)}秒`;
     }
     const scoreText = (bestScore === null || isNaN(bestScore)) ? 0 : bestScore;
     bestEl.textContent = `ベスト記録（通常モード）: ${timeText} ／ こんぺいとう ${scoreText}こ`;
@@ -152,6 +154,7 @@ const Menu = (() => {
   // ----- 外から使う窓口 -----
   function init(options) {
     if (options.gameTime !== undefined) gameTime = options.gameTime;
+    if (options.gameTimes) gameTimes = options.gameTimes;
     onStart = options.onStart || null;
   }
 

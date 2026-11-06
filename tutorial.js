@@ -175,7 +175,7 @@ const Tutorial = (() => {
     opts = Object.assign({ stage: 1, boostSec: 3, interval: 10 }, options);
     if (!root) build();
     pages = [pageKonpeito, pageBucket];
-    if (opts.stage === 2) pages.push(pageHands);
+    if (opts.stage >= 2) pages.push(pageHands);
     index = 0;
     render();
     root.style.display = 'flex';
